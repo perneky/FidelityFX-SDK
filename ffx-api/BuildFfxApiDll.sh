@@ -37,7 +37,7 @@ cd build
 
 # Run CMake configuration
 # cmake -G "Ninja" -DFFX_API_BACKEND=VK_X64 ..
-cmake -DFFX_API_BACKEND=VK_X64 -DCMAKE_C_FLAGS="-w" -DCMAKE_CXX_FLAGS="-w" -DCMAKE_POSITION_INDEPENDENT_CODE=ON ..
+cmake -DFFX_API_BACKEND=VK_X64 -DCMAKE_C_FLAGS="-w" -DCMAKE_CXX_FLAGS="-w" -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DCMAKE_BUILD_TYPE=Release ..
 
 # Build configurations
 # cmake --build . --config Debug --parallel 4
