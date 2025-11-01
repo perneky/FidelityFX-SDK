@@ -1,7 +1,7 @@
 // This file is part of the FidelityFX SDK.
 //
 // Copyright (C) 2024 Advanced Micro Devices, Inc.
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files(the "Software"), to deal
 // in the Software without restriction, including without limitation the rights
@@ -21,9 +21,8 @@
 // THE SOFTWARE.
 
 #include <string.h>  // for memset
-#include <stdlib.h>  // for _countof
+#include <stdlib.h>  // for std::size
 #include <cmath>     // for fabs, abs, sinf, sqrt, etc.
-
 
 #include <FidelityFX/host/ffx_lpm.h>
 
@@ -70,12 +69,12 @@ static FfxErrorCode patchResourceBindings(FfxPipelineState* inoutPipeline)
     for (uint32_t srvIndex = 0; srvIndex < inoutPipeline->srvTextureCount; ++srvIndex)
     {
         int32_t mapIndex = 0;
-        for (mapIndex = 0; mapIndex < _countof(srvTextureBindingTable); ++mapIndex)
+        for (mapIndex = 0; mapIndex < std::size(srvTextureBindingTable); ++mapIndex)
         {
             if (0 == wcscmp(srvTextureBindingTable[mapIndex].name, inoutPipeline->srvTextureBindings[srvIndex].name))
                 break;
         }
-        if (mapIndex == _countof(srvTextureBindingTable))
+        if (mapIndex == std::size(srvTextureBindingTable))
             return FFX_ERROR_INVALID_ARGUMENT;
 
         inoutPipeline->srvTextureBindings[srvIndex].resourceIdentifier = srvTextureBindingTable[mapIndex].index;
@@ -84,12 +83,12 @@ static FfxErrorCode patchResourceBindings(FfxPipelineState* inoutPipeline)
     for (uint32_t uavIndex = 0; uavIndex < inoutPipeline->uavTextureCount; ++uavIndex)
     {
         int32_t mapIndex = 0;
-        for (mapIndex = 0; mapIndex < _countof(uavTextureBindingTable); ++mapIndex)
+        for (mapIndex = 0; mapIndex < std::size(uavTextureBindingTable); ++mapIndex)
         {
             if (0 == wcscmp(uavTextureBindingTable[mapIndex].name, inoutPipeline->uavTextureBindings[uavIndex].name))
                 break;
         }
-        if (mapIndex == _countof(uavTextureBindingTable))
+        if (mapIndex == std::size(uavTextureBindingTable))
             return FFX_ERROR_INVALID_ARGUMENT;
 
         inoutPipeline->uavTextureBindings[uavIndex].resourceIdentifier = uavTextureBindingTable[mapIndex].index;
@@ -98,12 +97,12 @@ static FfxErrorCode patchResourceBindings(FfxPipelineState* inoutPipeline)
     for (uint32_t cbIndex = 0; cbIndex < inoutPipeline->constCount; ++cbIndex)
     {
         int32_t mapIndex = 0;
-        for (mapIndex = 0; mapIndex < _countof(cbResourceBindingTable); ++mapIndex)
+        for (mapIndex = 0; mapIndex < std::size(cbResourceBindingTable); ++mapIndex)
         {
             if (0 == wcscmp(cbResourceBindingTable[mapIndex].name, inoutPipeline->constantBufferBindings[cbIndex].name))
                 break;
         }
-        if (mapIndex == _countof(cbResourceBindingTable))
+        if (mapIndex == std::size(cbResourceBindingTable))
             return FFX_ERROR_INVALID_ARGUMENT;
 
         inoutPipeline->constantBufferBindings[cbIndex].resourceIdentifier = cbResourceBindingTable[mapIndex].index;
@@ -125,17 +124,18 @@ static FfxErrorCode createPipelineStates(FfxLpmContext_Private* context)
 {
     FFX_ASSERT(context);
     FfxPipelineDescription pipelineDescription = {};
-    pipelineDescription.contextFlags            = context->contextDescription.flags;
+    pipelineDescription.contextFlags           = context->contextDescription.flags;
 
     // Samplers
-    pipelineDescription.samplerCount = 1;
-    FfxSamplerDescription samplerDesc = { FFX_FILTER_TYPE_MINMAGMIP_LINEAR, FFX_ADDRESS_MODE_CLAMP, FFX_ADDRESS_MODE_CLAMP, FFX_ADDRESS_MODE_CLAMP, FFX_BIND_COMPUTE_SHADER_STAGE };
+    pipelineDescription.samplerCount  = 1;
+    FfxSamplerDescription samplerDesc = {
+        FFX_FILTER_TYPE_MINMAGMIP_LINEAR, FFX_ADDRESS_MODE_CLAMP, FFX_ADDRESS_MODE_CLAMP, FFX_ADDRESS_MODE_CLAMP, FFX_BIND_COMPUTE_SHADER_STAGE};
     pipelineDescription.samplers = &samplerDesc;
 
     // Root constants
     pipelineDescription.rootConstantBufferCount = 1;
-    FfxRootConstantDescription rootConstantDesc = { sizeof(LpmConstants) / sizeof(uint32_t), FFX_BIND_COMPUTE_SHADER_STAGE };
-    pipelineDescription.rootConstants = &rootConstantDesc;
+    FfxRootConstantDescription rootConstantDesc = {sizeof(LpmConstants) / sizeof(uint32_t), FFX_BIND_COMPUTE_SHADER_STAGE};
+    pipelineDescription.rootConstants           = &rootConstantDesc;
 
     // Query device capabilities
     FfxDeviceCapabilities capabilities;
@@ -145,8 +145,8 @@ static FfxErrorCode createPipelineStates(FfxLpmContext_Private* context)
     bool haveShaderModel66 = capabilities.maximumSupportedShaderModel >= FFX_SHADER_MODEL_6_6;
     // Defaulting to false to avoid fp16 overflows for large HDR values.
     // Set to true, if certain content will not have issues with fp16 overflow for enabling optimization allowing for 2pix per thread.
-    bool supportedFP16     = false;
-    bool canForceWave64    = false;
+    bool supportedFP16  = false;
+    bool canForceWave64 = false;
 
     const uint32_t waveLaneCountMin = capabilities.waveLaneCountMin;
     const uint32_t waveLaneCountMax = capabilities.waveLaneCountMax;
@@ -159,13 +159,14 @@ static FfxErrorCode createPipelineStates(FfxLpmContext_Private* context)
     uint32_t contextFlags = context->contextDescription.flags;
 
     // Set up pipeline descriptors (basically RootSignature and binding)
-    wcscpy_s(pipelineDescription.name, L"LPM-FILTER");
+    wcscpy(pipelineDescription.name, L"LPM-FILTER");
     FFX_VALIDATE(context->contextDescription.backendInterface.fpCreatePipeline(
         &context->contextDescription.backendInterface,
         FFX_EFFECT_LPM,
         FFX_LPM_PASS_FILTER,
         getPipelinePermutationFlags(contextFlags, FFX_LPM_PASS_FILTER, supportedFP16, canForceWave64),
-        &pipelineDescription, context->effectContextId,
+        &pipelineDescription,
+        context->effectContextId,
         &context->pipelineLPMFilter));
 
     // For each pipeline: re-route/fix-up IDs based on names
@@ -174,19 +175,20 @@ static FfxErrorCode createPipelineStates(FfxLpmContext_Private* context)
     return FFX_OK;
 }
 
-static void scheduleDispatch(FfxLpmContext_Private* context, const FfxLpmDispatchDescription* params, const FfxPipelineState* pipeline, uint32_t dispatchX, uint32_t dispatchY)
+static void scheduleDispatch(
+    FfxLpmContext_Private* context, const FfxLpmDispatchDescription* params, const FfxPipelineState* pipeline, uint32_t dispatchX, uint32_t dispatchY)
 {
     FfxGpuJobDescription dispatchJob = {FFX_GPU_JOB_COMPUTE};
-    wcscpy_s(dispatchJob.jobLabel, pipeline->name);
+    wcscpy(dispatchJob.jobLabel, pipeline->name);
 
     for (uint32_t currentShaderResourceViewIndex = 0; currentShaderResourceViewIndex < pipeline->srvTextureCount; ++currentShaderResourceViewIndex)
     {
-        const uint32_t            currentResourceId               = pipeline->srvTextureBindings[currentShaderResourceViewIndex].resourceIdentifier;
-        const FfxResourceInternal currentResource                 = context->srvResources[currentResourceId];
+        const uint32_t            currentResourceId = pipeline->srvTextureBindings[currentShaderResourceViewIndex].resourceIdentifier;
+        const FfxResourceInternal currentResource   = context->srvResources[currentResourceId];
         dispatchJob.computeJobDescriptor.srvTextures[currentShaderResourceViewIndex].resource = currentResource;
 #ifdef FFX_DEBUG
-        wcscpy_s(dispatchJob.computeJobDescriptor.srvTextures[currentShaderResourceViewIndex].name,
-                 pipeline->srvTextureBindings[currentShaderResourceViewIndex].name);
+        wcscpy(dispatchJob.computeJobDescriptor.srvTextures[currentShaderResourceViewIndex].name,
+               pipeline->srvTextureBindings[currentShaderResourceViewIndex].name);
 #endif
     }
 
@@ -194,12 +196,12 @@ static void scheduleDispatch(FfxLpmContext_Private* context, const FfxLpmDispatc
     {
         const uint32_t currentResourceId = pipeline->uavTextureBindings[currentUnorderedAccessViewIndex].resourceIdentifier;
 #ifdef FFX_DEBUG
-        wcscpy_s(dispatchJob.computeJobDescriptor.uavTextures[currentUnorderedAccessViewIndex].name,
-                 pipeline->uavTextureBindings[currentUnorderedAccessViewIndex].name);
+        wcscpy(dispatchJob.computeJobDescriptor.uavTextures[currentUnorderedAccessViewIndex].name,
+               pipeline->uavTextureBindings[currentUnorderedAccessViewIndex].name);
 #endif
-        const FfxResourceInternal currentResource                     = context->uavResources[currentResourceId];
+        const FfxResourceInternal currentResource                                              = context->uavResources[currentResourceId];
         dispatchJob.computeJobDescriptor.uavTextures[currentUnorderedAccessViewIndex].resource = currentResource;
-        dispatchJob.computeJobDescriptor.uavTextures[currentUnorderedAccessViewIndex].mip = 0;
+        dispatchJob.computeJobDescriptor.uavTextures[currentUnorderedAccessViewIndex].mip      = 0;
     }
 
     dispatchJob.computeJobDescriptor.dimensions[0] = dispatchX;
@@ -208,10 +210,9 @@ static void scheduleDispatch(FfxLpmContext_Private* context, const FfxLpmDispatc
     dispatchJob.computeJobDescriptor.pipeline      = *pipeline;
 
 #ifdef FFX_DEBUG
-    wcscpy_s(dispatchJob.computeJobDescriptor.cbNames[0], pipeline->constantBufferBindings[0].name);
+    wcscpy(dispatchJob.computeJobDescriptor.cbNames[0], pipeline->constantBufferBindings[0].name);
 #endif
     dispatchJob.computeJobDescriptor.cbs[0] = context->constantBuffer;
-
 
     context->contextDescription.backendInterface.fpScheduleGpuJob(&context->contextDescription.backendInterface, &dispatchJob);
 }
@@ -222,14 +223,19 @@ static FfxErrorCode lpmDispatch(FfxLpmContext_Private* context, const FfxLpmDisp
     FfxCommandList commandList = params->commandList;
 
     // Register resources for frame
-    context->contextDescription.backendInterface.fpRegisterResource(&context->contextDescription.backendInterface, &params->inputColor, context->effectContextId, &context->srvResources[FFX_LPM_RESOURCE_IDENTIFIER_INPUT_COLOR]);
+    context->contextDescription.backendInterface.fpRegisterResource(&context->contextDescription.backendInterface,
+                                                                    &params->inputColor,
+                                                                    context->effectContextId,
+                                                                    &context->srvResources[FFX_LPM_RESOURCE_IDENTIFIER_INPUT_COLOR]);
 
-    context->contextDescription.backendInterface.fpRegisterResource(
-        &context->contextDescription.backendInterface, &params->outputColor, context->effectContextId, &context->uavResources[FFX_LPM_RESOURCE_IDENTIFIER_OUTPUT_COLOR]);
+    context->contextDescription.backendInterface.fpRegisterResource(&context->contextDescription.backendInterface,
+                                                                    &params->outputColor,
+                                                                    context->effectContextId,
+                                                                    &context->uavResources[FFX_LPM_RESOURCE_IDENTIFIER_OUTPUT_COLOR]);
 
     // This value is the image region dimension that each thread group of the LPM shader operates on
-    static const int threadGroupWorkRegionDim = 16;
-    FfxResourceDescription desc = context->contextDescription.backendInterface.fpGetResourceDescription(
+    static const int       threadGroupWorkRegionDim = 16;
+    FfxResourceDescription desc                     = context->contextDescription.backendInterface.fpGetResourceDescription(
         &context->contextDescription.backendInterface, context->srvResources[FFX_LPM_RESOURCE_IDENTIFIER_INPUT_COLOR]);
     int dispatchX = FFX_DIVIDE_ROUNDING_UP(desc.width, threadGroupWorkRegionDim);
     int dispatchY = FFX_DIVIDE_ROUNDING_UP(desc.height, threadGroupWorkRegionDim);
@@ -272,273 +278,271 @@ static FfxErrorCode lpmDispatch(FfxLpmContext_Private* context, const FfxLpmDisp
 
     switch (params->colorSpace)
     {
-        case FfxLpmColorSpace::FFX_LPM_ColorSpace_REC709:
+    case FfxLpmColorSpace::FFX_LPM_ColorSpace_REC709:
+    {
+        switch (params->displayMode)
         {
-            switch (params->displayMode)
-            {
-                case FfxLpmDisplayMode::FFX_LPM_DISPLAYMODE_LDR:
-                {
-                    FfxCalculateLpmConsts(params->shoulder,
-                                          LPM_CONFIG_709_709,
-                                          LPM_COLORS_709_709,
-                                          params->softGap,
-                                          params->hdrMax,
-                                          params->lpmExposure,
-                                          params->contrast,
-                                          params->shoulderContrast,
-                                          saturation,
-                                          crosstalk);
-                    FfxPopulateLpmConsts(LPM_CONFIG_709_709, lpmConsts.con, lpmConsts.soft, lpmConsts.con2, lpmConsts.clip, lpmConsts.scaleOnly);
-                }
-                break;
-                case FfxLpmDisplayMode::FFX_LPM_DISPLAYMODE_FSHDR_2084:
-                {
-                    hdr10S = LpmHdr10RawScalar(displayMinMaxLuminance[1]);
-                    FfxCalculateLpmConsts(params->shoulder,
-                                          LPM_CONFIG_FS2RAWPQ_709,
-                                          LPM_COLORS_FS2RAWPQ_709,
-                                          params->softGap,
-                                          params->hdrMax,
-                                          params->lpmExposure,
-                                          params->contrast,
-                                          params->shoulderContrast,
-                                          saturation,
-                                          crosstalk);
-                    FfxPopulateLpmConsts(LPM_CONFIG_FS2RAWPQ_709, lpmConsts.con, lpmConsts.soft, lpmConsts.con2, lpmConsts.clip, lpmConsts.scaleOnly);
-                }
-                break;
-                case FfxLpmDisplayMode::FFX_LPM_DISPLAYMODE_FSHDR_SCRGB:
-                {
-                    fs2S = LpmFs2ScrgbScalar(displayMinMaxLuminance[0], displayMinMaxLuminance[1]);
-                    FfxCalculateLpmConsts(params->shoulder,
-                                          LPM_CONFIG_FS2SCRGB_709,
-                                          LPM_COLORS_FS2SCRGB_709,
-                                          params->softGap,
-                                          params->hdrMax,
-                                          params->lpmExposure,
-                                          params->contrast,
-                                          params->shoulderContrast,
-                                          saturation,
-                                          crosstalk);
-                    FfxPopulateLpmConsts(LPM_CONFIG_FS2SCRGB_709, lpmConsts.con, lpmConsts.soft, lpmConsts.con2, lpmConsts.clip, lpmConsts.scaleOnly);
-                }
-                break;
-                case FfxLpmDisplayMode::FFX_LPM_DISPLAYMODE_HDR10_2084:
-                {
-                    hdr10S = LpmHdr10RawScalar(displayMinMaxLuminance[1]);
-                    FfxCalculateLpmConsts(params->shoulder,
-                                          LPM_CONFIG_HDR10RAW_709,
-                                          LPM_COLORS_HDR10RAW_709,
-                                          params->softGap,
-                                          params->hdrMax,
-                                          params->lpmExposure,
-                                          params->contrast,
-                                          params->shoulderContrast,
-                                          saturation,
-                                          crosstalk);
-                    FfxPopulateLpmConsts(LPM_CONFIG_HDR10RAW_709, lpmConsts.con, lpmConsts.soft, lpmConsts.con2, lpmConsts.clip, lpmConsts.scaleOnly);
-                }
-                break;
-                case FfxLpmDisplayMode::FFX_LPM_DISPLAYMODE_HDR10_SCRGB:
-                {
-                    hdr10S = LpmHdr10ScrgbScalar(displayMinMaxLuminance[1]);
-                    FfxCalculateLpmConsts(params->shoulder,
-                                          LPM_CONFIG_HDR10SCRGB_709,
-                                          LPM_COLORS_HDR10SCRGB_709,
-                                          params->softGap,
-                                          params->hdrMax,
-                                          params->lpmExposure,
-                                          params->contrast,
-                                          params->shoulderContrast,
-                                          saturation,
-                                          crosstalk);
-                    FfxPopulateLpmConsts(LPM_CONFIG_HDR10SCRGB_709, lpmConsts.con, lpmConsts.soft, lpmConsts.con2, lpmConsts.clip, lpmConsts.scaleOnly);
-                }
-                break;
-            }
+        case FfxLpmDisplayMode::FFX_LPM_DISPLAYMODE_LDR:
+        {
+            FfxCalculateLpmConsts(params->shoulder,
+                                  LPM_CONFIG_709_709,
+                                  LPM_COLORS_709_709,
+                                  params->softGap,
+                                  params->hdrMax,
+                                  params->lpmExposure,
+                                  params->contrast,
+                                  params->shoulderContrast,
+                                  saturation,
+                                  crosstalk);
+            FfxPopulateLpmConsts(LPM_CONFIG_709_709, lpmConsts.con, lpmConsts.soft, lpmConsts.con2, lpmConsts.clip, lpmConsts.scaleOnly);
         }
         break;
-        case FfxLpmColorSpace::FFX_LPM_ColorSpace_P3:
+        case FfxLpmDisplayMode::FFX_LPM_DISPLAYMODE_FSHDR_2084:
         {
-            switch (params->displayMode)
-            {
-                case FfxLpmDisplayMode::FFX_LPM_DISPLAYMODE_LDR:
-                {
-                    FfxCalculateLpmConsts(params->shoulder,
-                                          LPM_CONFIG_709_P3,
-                                          LPM_COLORS_709_P3,
-                                          params->softGap,
-                                          params->hdrMax,
-                                          params->lpmExposure,
-                                          params->contrast,
-                                          params->shoulderContrast,
-                                          saturation,
-                                          crosstalk);
-                    FfxPopulateLpmConsts(LPM_CONFIG_709_P3, lpmConsts.con, lpmConsts.soft, lpmConsts.con2, lpmConsts.clip, lpmConsts.scaleOnly);
-                }
-                break;
-                case FfxLpmDisplayMode::FFX_LPM_DISPLAYMODE_FSHDR_2084:
-                {
-                    FfxCalculateLpmConsts(params->shoulder,
-                                          LPM_CONFIG_FS2RAWPQ_P3,
-                                          LPM_COLORS_FS2RAWPQ_P3,
-                                          params->softGap,
-                                          params->hdrMax,
-                                          params->lpmExposure,
-                                          params->contrast,
-                                          params->shoulderContrast,
-                                          saturation,
-                                          crosstalk);
-                    FfxPopulateLpmConsts(LPM_CONFIG_FS2RAWPQ_P3, lpmConsts.con, lpmConsts.soft, lpmConsts.con2, lpmConsts.clip, lpmConsts.scaleOnly);
-                }
-                break;
-                case FfxLpmDisplayMode::FFX_LPM_DISPLAYMODE_FSHDR_SCRGB:
-                {
-                    fs2S = LpmFs2ScrgbScalar(displayMinMaxLuminance[0], displayMinMaxLuminance[1]);
-                    FfxCalculateLpmConsts(params->shoulder,
-                                          LPM_CONFIG_FS2SCRGB_P3,
-                                          LPM_COLORS_FS2SCRGB_P3,
-                                          params->softGap,
-                                          params->hdrMax,
-                                          params->lpmExposure,
-                                          params->contrast,
-                                          params->shoulderContrast,
-                                          saturation,
-                                          crosstalk);
-                    FfxPopulateLpmConsts(LPM_CONFIG_FS2SCRGB_P3, lpmConsts.con, lpmConsts.soft, lpmConsts.con2, lpmConsts.clip, lpmConsts.scaleOnly);
-                }
-                break;
-                case FfxLpmDisplayMode::FFX_LPM_DISPLAYMODE_HDR10_2084:
-                {
-                    hdr10S = LpmHdr10RawScalar(displayMinMaxLuminance[1]);
-                    FfxCalculateLpmConsts(params->shoulder,
-                                          LPM_CONFIG_HDR10RAW_P3,
-                                          LPM_COLORS_HDR10RAW_P3,
-                                          params->softGap,
-                                          params->hdrMax,
-                                          params->lpmExposure,
-                                          params->contrast,
-                                          params->shoulderContrast,
-                                          saturation,
-                                          crosstalk);
-                    FfxPopulateLpmConsts(LPM_CONFIG_HDR10RAW_P3, lpmConsts.con, lpmConsts.soft, lpmConsts.con2, lpmConsts.clip, lpmConsts.scaleOnly);
-                }
-                break;
-                case FfxLpmDisplayMode::FFX_LPM_DISPLAYMODE_HDR10_SCRGB:
-                {
-                    hdr10S = LpmHdr10ScrgbScalar(displayMinMaxLuminance[1]);
-                    FfxCalculateLpmConsts(params->shoulder,
-                                          LPM_CONFIG_HDR10SCRGB_P3,
-                                          LPM_COLORS_HDR10SCRGB_P3,
-                                          params->softGap,
-                                          params->hdrMax,
-                                          params->lpmExposure,
-                                          params->contrast,
-                                          params->shoulderContrast,
-                                          saturation,
-                                          crosstalk);
-                    FfxPopulateLpmConsts(LPM_CONFIG_HDR10SCRGB_P3, lpmConsts.con, lpmConsts.soft, lpmConsts.con2, lpmConsts.clip, lpmConsts.scaleOnly);
-                }
-                break;
-            }
+            hdr10S = LpmHdr10RawScalar(displayMinMaxLuminance[1]);
+            FfxCalculateLpmConsts(params->shoulder,
+                                  LPM_CONFIG_FS2RAWPQ_709,
+                                  LPM_COLORS_FS2RAWPQ_709,
+                                  params->softGap,
+                                  params->hdrMax,
+                                  params->lpmExposure,
+                                  params->contrast,
+                                  params->shoulderContrast,
+                                  saturation,
+                                  crosstalk);
+            FfxPopulateLpmConsts(LPM_CONFIG_FS2RAWPQ_709, lpmConsts.con, lpmConsts.soft, lpmConsts.con2, lpmConsts.clip, lpmConsts.scaleOnly);
         }
         break;
-        case FfxLpmColorSpace::FFX_LPM_ColorSpace_REC2020:
+        case FfxLpmDisplayMode::FFX_LPM_DISPLAYMODE_FSHDR_SCRGB:
         {
-            switch (params->displayMode)
-            {
-                case FfxLpmDisplayMode::FFX_LPM_DISPLAYMODE_LDR:
-                {
-                    FfxCalculateLpmConsts(params->shoulder,
-                                          LPM_CONFIG_709_2020,
-                                          LPM_COLORS_709_2020,
-                                          params->softGap,
-                                          params->hdrMax,
-                                          params->lpmExposure,
-                                          params->contrast,
-                                          params->shoulderContrast,
-                                          saturation,
-                                          crosstalk);
-                    FfxPopulateLpmConsts(LPM_CONFIG_709_2020, lpmConsts.con, lpmConsts.soft, lpmConsts.con2, lpmConsts.clip, lpmConsts.scaleOnly);
-                }
-                break;
-                case FfxLpmDisplayMode::FFX_LPM_DISPLAYMODE_FSHDR_2084:
-                {
-                    FfxCalculateLpmConsts(params->shoulder,
-                                          LPM_CONFIG_FS2RAWPQ_2020,
-                                          LPM_COLORS_FS2RAWPQ_2020,
-                                          params->softGap,
-                                          params->hdrMax,
-                                          params->lpmExposure,
-                                          params->contrast,
-                                          params->shoulderContrast,
-                                          saturation,
-                                          crosstalk);
-                    FfxPopulateLpmConsts(LPM_CONFIG_FS2RAWPQ_2020, lpmConsts.con, lpmConsts.soft, lpmConsts.con2, lpmConsts.clip, lpmConsts.scaleOnly);
-                }
-                break;
-                case FfxLpmDisplayMode::FFX_LPM_DISPLAYMODE_FSHDR_SCRGB:
-                {
-                    fs2S = LpmFs2ScrgbScalar(displayMinMaxLuminance[0], displayMinMaxLuminance[1]);
-                    FfxCalculateLpmConsts(params->shoulder,
-                                          LPM_CONFIG_FS2SCRGB_2020,
-                                          LPM_COLORS_FS2SCRGB_2020,
-                                          params->softGap,
-                                          params->hdrMax,
-                                          params->lpmExposure,
-                                          params->contrast,
-                                          params->shoulderContrast,
-                                          saturation,
-                                          crosstalk);
-                    FfxPopulateLpmConsts(LPM_CONFIG_FS2SCRGB_2020, lpmConsts.con, lpmConsts.soft, lpmConsts.con2, lpmConsts.clip, lpmConsts.scaleOnly);
-                }
-                break;
-                case FfxLpmDisplayMode::FFX_LPM_DISPLAYMODE_HDR10_2084:
-                {
-                    hdr10S = LpmHdr10RawScalar(displayMinMaxLuminance[1]);
-                    FfxCalculateLpmConsts(params->shoulder,
-                                          LPM_CONFIG_HDR10RAW_2020,
-                                          LPM_COLORS_HDR10RAW_2020,
-                                          params->softGap,
-                                          params->hdrMax,
-                                          params->lpmExposure,
-                                          params->contrast,
-                                          params->shoulderContrast,
-                                          saturation,
-                                          crosstalk);
-                    FfxPopulateLpmConsts(LPM_CONFIG_HDR10RAW_2020, lpmConsts.con, lpmConsts.soft, lpmConsts.con2, lpmConsts.clip, lpmConsts.scaleOnly);
-                }
-                break;
-                case FfxLpmDisplayMode::FFX_LPM_DISPLAYMODE_HDR10_SCRGB:
-                {
-                    hdr10S = LpmHdr10ScrgbScalar(displayMinMaxLuminance[1]);
-                    FfxCalculateLpmConsts(params->shoulder,
-                                          LPM_CONFIG_HDR10SCRGB_2020,
-                                          LPM_COLORS_HDR10SCRGB_2020,
-                                          params->softGap,
-                                          params->hdrMax,
-                                          params->lpmExposure,
-                                          params->contrast,
-                                          params->shoulderContrast,
-                                          saturation,
-                                          crosstalk);
-                    FfxPopulateLpmConsts(LPM_CONFIG_HDR10SCRGB_2020, lpmConsts.con, lpmConsts.soft, lpmConsts.con2, lpmConsts.clip, lpmConsts.scaleOnly);
-                }
-                break;
-            }
+            fs2S = LpmFs2ScrgbScalar(displayMinMaxLuminance[0], displayMinMaxLuminance[1]);
+            FfxCalculateLpmConsts(params->shoulder,
+                                  LPM_CONFIG_FS2SCRGB_709,
+                                  LPM_COLORS_FS2SCRGB_709,
+                                  params->softGap,
+                                  params->hdrMax,
+                                  params->lpmExposure,
+                                  params->contrast,
+                                  params->shoulderContrast,
+                                  saturation,
+                                  crosstalk);
+            FfxPopulateLpmConsts(LPM_CONFIG_FS2SCRGB_709, lpmConsts.con, lpmConsts.soft, lpmConsts.con2, lpmConsts.clip, lpmConsts.scaleOnly);
         }
         break;
-        default:
-            break;
+        case FfxLpmDisplayMode::FFX_LPM_DISPLAYMODE_HDR10_2084:
+        {
+            hdr10S = LpmHdr10RawScalar(displayMinMaxLuminance[1]);
+            FfxCalculateLpmConsts(params->shoulder,
+                                  LPM_CONFIG_HDR10RAW_709,
+                                  LPM_COLORS_HDR10RAW_709,
+                                  params->softGap,
+                                  params->hdrMax,
+                                  params->lpmExposure,
+                                  params->contrast,
+                                  params->shoulderContrast,
+                                  saturation,
+                                  crosstalk);
+            FfxPopulateLpmConsts(LPM_CONFIG_HDR10RAW_709, lpmConsts.con, lpmConsts.soft, lpmConsts.con2, lpmConsts.clip, lpmConsts.scaleOnly);
+        }
+        break;
+        case FfxLpmDisplayMode::FFX_LPM_DISPLAYMODE_HDR10_SCRGB:
+        {
+            hdr10S = LpmHdr10ScrgbScalar(displayMinMaxLuminance[1]);
+            FfxCalculateLpmConsts(params->shoulder,
+                                  LPM_CONFIG_HDR10SCRGB_709,
+                                  LPM_COLORS_HDR10SCRGB_709,
+                                  params->softGap,
+                                  params->hdrMax,
+                                  params->lpmExposure,
+                                  params->contrast,
+                                  params->shoulderContrast,
+                                  saturation,
+                                  crosstalk);
+            FfxPopulateLpmConsts(LPM_CONFIG_HDR10SCRGB_709, lpmConsts.con, lpmConsts.soft, lpmConsts.con2, lpmConsts.clip, lpmConsts.scaleOnly);
+        }
+        break;
+        }
+    }
+    break;
+    case FfxLpmColorSpace::FFX_LPM_ColorSpace_P3:
+    {
+        switch (params->displayMode)
+        {
+        case FfxLpmDisplayMode::FFX_LPM_DISPLAYMODE_LDR:
+        {
+            FfxCalculateLpmConsts(params->shoulder,
+                                  LPM_CONFIG_709_P3,
+                                  LPM_COLORS_709_P3,
+                                  params->softGap,
+                                  params->hdrMax,
+                                  params->lpmExposure,
+                                  params->contrast,
+                                  params->shoulderContrast,
+                                  saturation,
+                                  crosstalk);
+            FfxPopulateLpmConsts(LPM_CONFIG_709_P3, lpmConsts.con, lpmConsts.soft, lpmConsts.con2, lpmConsts.clip, lpmConsts.scaleOnly);
+        }
+        break;
+        case FfxLpmDisplayMode::FFX_LPM_DISPLAYMODE_FSHDR_2084:
+        {
+            FfxCalculateLpmConsts(params->shoulder,
+                                  LPM_CONFIG_FS2RAWPQ_P3,
+                                  LPM_COLORS_FS2RAWPQ_P3,
+                                  params->softGap,
+                                  params->hdrMax,
+                                  params->lpmExposure,
+                                  params->contrast,
+                                  params->shoulderContrast,
+                                  saturation,
+                                  crosstalk);
+            FfxPopulateLpmConsts(LPM_CONFIG_FS2RAWPQ_P3, lpmConsts.con, lpmConsts.soft, lpmConsts.con2, lpmConsts.clip, lpmConsts.scaleOnly);
+        }
+        break;
+        case FfxLpmDisplayMode::FFX_LPM_DISPLAYMODE_FSHDR_SCRGB:
+        {
+            fs2S = LpmFs2ScrgbScalar(displayMinMaxLuminance[0], displayMinMaxLuminance[1]);
+            FfxCalculateLpmConsts(params->shoulder,
+                                  LPM_CONFIG_FS2SCRGB_P3,
+                                  LPM_COLORS_FS2SCRGB_P3,
+                                  params->softGap,
+                                  params->hdrMax,
+                                  params->lpmExposure,
+                                  params->contrast,
+                                  params->shoulderContrast,
+                                  saturation,
+                                  crosstalk);
+            FfxPopulateLpmConsts(LPM_CONFIG_FS2SCRGB_P3, lpmConsts.con, lpmConsts.soft, lpmConsts.con2, lpmConsts.clip, lpmConsts.scaleOnly);
+        }
+        break;
+        case FfxLpmDisplayMode::FFX_LPM_DISPLAYMODE_HDR10_2084:
+        {
+            hdr10S = LpmHdr10RawScalar(displayMinMaxLuminance[1]);
+            FfxCalculateLpmConsts(params->shoulder,
+                                  LPM_CONFIG_HDR10RAW_P3,
+                                  LPM_COLORS_HDR10RAW_P3,
+                                  params->softGap,
+                                  params->hdrMax,
+                                  params->lpmExposure,
+                                  params->contrast,
+                                  params->shoulderContrast,
+                                  saturation,
+                                  crosstalk);
+            FfxPopulateLpmConsts(LPM_CONFIG_HDR10RAW_P3, lpmConsts.con, lpmConsts.soft, lpmConsts.con2, lpmConsts.clip, lpmConsts.scaleOnly);
+        }
+        break;
+        case FfxLpmDisplayMode::FFX_LPM_DISPLAYMODE_HDR10_SCRGB:
+        {
+            hdr10S = LpmHdr10ScrgbScalar(displayMinMaxLuminance[1]);
+            FfxCalculateLpmConsts(params->shoulder,
+                                  LPM_CONFIG_HDR10SCRGB_P3,
+                                  LPM_COLORS_HDR10SCRGB_P3,
+                                  params->softGap,
+                                  params->hdrMax,
+                                  params->lpmExposure,
+                                  params->contrast,
+                                  params->shoulderContrast,
+                                  saturation,
+                                  crosstalk);
+            FfxPopulateLpmConsts(LPM_CONFIG_HDR10SCRGB_P3, lpmConsts.con, lpmConsts.soft, lpmConsts.con2, lpmConsts.clip, lpmConsts.scaleOnly);
+        }
+        break;
+        }
+    }
+    break;
+    case FfxLpmColorSpace::FFX_LPM_ColorSpace_REC2020:
+    {
+        switch (params->displayMode)
+        {
+        case FfxLpmDisplayMode::FFX_LPM_DISPLAYMODE_LDR:
+        {
+            FfxCalculateLpmConsts(params->shoulder,
+                                  LPM_CONFIG_709_2020,
+                                  LPM_COLORS_709_2020,
+                                  params->softGap,
+                                  params->hdrMax,
+                                  params->lpmExposure,
+                                  params->contrast,
+                                  params->shoulderContrast,
+                                  saturation,
+                                  crosstalk);
+            FfxPopulateLpmConsts(LPM_CONFIG_709_2020, lpmConsts.con, lpmConsts.soft, lpmConsts.con2, lpmConsts.clip, lpmConsts.scaleOnly);
+        }
+        break;
+        case FfxLpmDisplayMode::FFX_LPM_DISPLAYMODE_FSHDR_2084:
+        {
+            FfxCalculateLpmConsts(params->shoulder,
+                                  LPM_CONFIG_FS2RAWPQ_2020,
+                                  LPM_COLORS_FS2RAWPQ_2020,
+                                  params->softGap,
+                                  params->hdrMax,
+                                  params->lpmExposure,
+                                  params->contrast,
+                                  params->shoulderContrast,
+                                  saturation,
+                                  crosstalk);
+            FfxPopulateLpmConsts(LPM_CONFIG_FS2RAWPQ_2020, lpmConsts.con, lpmConsts.soft, lpmConsts.con2, lpmConsts.clip, lpmConsts.scaleOnly);
+        }
+        break;
+        case FfxLpmDisplayMode::FFX_LPM_DISPLAYMODE_FSHDR_SCRGB:
+        {
+            fs2S = LpmFs2ScrgbScalar(displayMinMaxLuminance[0], displayMinMaxLuminance[1]);
+            FfxCalculateLpmConsts(params->shoulder,
+                                  LPM_CONFIG_FS2SCRGB_2020,
+                                  LPM_COLORS_FS2SCRGB_2020,
+                                  params->softGap,
+                                  params->hdrMax,
+                                  params->lpmExposure,
+                                  params->contrast,
+                                  params->shoulderContrast,
+                                  saturation,
+                                  crosstalk);
+            FfxPopulateLpmConsts(LPM_CONFIG_FS2SCRGB_2020, lpmConsts.con, lpmConsts.soft, lpmConsts.con2, lpmConsts.clip, lpmConsts.scaleOnly);
+        }
+        break;
+        case FfxLpmDisplayMode::FFX_LPM_DISPLAYMODE_HDR10_2084:
+        {
+            hdr10S = LpmHdr10RawScalar(displayMinMaxLuminance[1]);
+            FfxCalculateLpmConsts(params->shoulder,
+                                  LPM_CONFIG_HDR10RAW_2020,
+                                  LPM_COLORS_HDR10RAW_2020,
+                                  params->softGap,
+                                  params->hdrMax,
+                                  params->lpmExposure,
+                                  params->contrast,
+                                  params->shoulderContrast,
+                                  saturation,
+                                  crosstalk);
+            FfxPopulateLpmConsts(LPM_CONFIG_HDR10RAW_2020, lpmConsts.con, lpmConsts.soft, lpmConsts.con2, lpmConsts.clip, lpmConsts.scaleOnly);
+        }
+        break;
+        case FfxLpmDisplayMode::FFX_LPM_DISPLAYMODE_HDR10_SCRGB:
+        {
+            hdr10S = LpmHdr10ScrgbScalar(displayMinMaxLuminance[1]);
+            FfxCalculateLpmConsts(params->shoulder,
+                                  LPM_CONFIG_HDR10SCRGB_2020,
+                                  LPM_COLORS_HDR10SCRGB_2020,
+                                  params->softGap,
+                                  params->hdrMax,
+                                  params->lpmExposure,
+                                  params->contrast,
+                                  params->shoulderContrast,
+                                  saturation,
+                                  crosstalk);
+            FfxPopulateLpmConsts(LPM_CONFIG_HDR10SCRGB_2020, lpmConsts.con, lpmConsts.soft, lpmConsts.con2, lpmConsts.clip, lpmConsts.scaleOnly);
+        }
+        break;
+        }
+    }
+    break;
+    default:
+        break;
     }
 
     memcpy(lpmConsts.ctl, ctl, sizeof(ctl));
 
-    context->contextDescription.backendInterface.fpStageConstantBufferDataFunc(&context->contextDescription.backendInterface, 
-                                                                               &lpmConsts, 
-                                                                               sizeof(LpmConstants), 
-                                                                               &context->constantBuffer);
-    
+    context->contextDescription.backendInterface.fpStageConstantBufferDataFunc(
+        &context->contextDescription.backendInterface, &lpmConsts, sizeof(LpmConstants), &context->constantBuffer);
+
     scheduleDispatch(context, params, &context->pipelineLPMFilter, dispatchX, dispatchY);
 
     // Execute all the work for the frame
@@ -564,18 +568,18 @@ static FfxErrorCode lpmCreate(FfxLpmContext_Private* context, const FfxLpmContex
     // Check version info - make sure we are linked with the right backend version
     FfxVersionNumber version = context->contextDescription.backendInterface.fpGetSDKVersion(&context->contextDescription.backendInterface);
     FFX_RETURN_ON_ERROR(version == FFX_SDK_MAKE_VERSION(1, 1, 4), FFX_ERROR_INVALID_VERSION);
-    
+
     // Setup constant buffer sizes.
     context->constantBuffer.num32BitEntries = sizeof(LpmConstants) / sizeof(uint32_t);
 
     // Create the context.
-    FfxErrorCode errorCode =
-        context->contextDescription.backendInterface.fpCreateBackendContext(&context->contextDescription.backendInterface, FFX_EFFECT_LPM, nullptr, &context->effectContextId);
+    FfxErrorCode errorCode = context->contextDescription.backendInterface.fpCreateBackendContext(
+        &context->contextDescription.backendInterface, FFX_EFFECT_LPM, nullptr, &context->effectContextId);
     FFX_RETURN_ON_ERROR(errorCode == FFX_OK, errorCode);
 
     // Call out for device caps.
-    errorCode = context->contextDescription.backendInterface.fpGetDeviceCapabilities(
-        &context->contextDescription.backendInterface, &context->deviceCapabilities);
+    errorCode =
+        context->contextDescription.backendInterface.fpGetDeviceCapabilities(&context->contextDescription.backendInterface, &context->deviceCapabilities);
     FFX_RETURN_ON_ERROR(errorCode == FFX_OK, errorCode);
 
     // Clear the SRV resources to NULL.
@@ -612,7 +616,7 @@ FfxErrorCode ffxLpmContextCreate(FfxLpmContext* context, const FfxLpmContextDesc
 {
     // Zero context memory
     memset(context, 0, sizeof(FfxLpmContext));
-    
+
     // Check pointers are valid.
     FFX_RETURN_ON_ERROR(context, FFX_ERROR_INVALID_POINTER);
     FFX_RETURN_ON_ERROR(contextDescription, FFX_ERROR_INVALID_POINTER);
@@ -673,10 +677,10 @@ FFX_API FfxErrorCode FfxPopulateLpmConsts(bool      incon,
                                           uint32_t& outclip,
                                           uint32_t& outscaleOnly)
 {
-    outcon = incon;
-    outsoft = insoft;
-    outcon2 = incon2;
-    outclip = inclip;
+    outcon       = incon;
+    outsoft      = insoft;
+    outcon2      = incon2;
+    outclip      = inclip;
     outscaleOnly = inscaleOnly;
 
     return FFX_OK;

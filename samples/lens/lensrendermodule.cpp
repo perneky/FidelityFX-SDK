@@ -1,7 +1,7 @@
 // This file is part of the FidelityFX SDK.
 //
 // Copyright (C) 2024 Advanced Micro Devices, Inc.
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files(the "Software"), to deal
 // in the Software without restriction, including without limitation the rights
@@ -32,7 +32,7 @@
 
 using namespace cauldron;
 
-static const char* s_FloatingPointMathOptions[] = {"Use FP32", "Use FP16"};
+static const char*    s_FloatingPointMathOptions[] = {"Use FP32", "Use FP16"};
 FfxLensFloatPrecision GetFloatPrecision(int32_t fpMathIndex)
 {
     std::string floatingPointMath = s_FloatingPointMathOptions[fpMathIndex];
@@ -94,19 +94,15 @@ void LensRenderModule::Init(const json& initData)
     UISection* uiSection = GetUIManager()->RegisterUIElements("Lens effects", UISectionType::Sample);
 
     // Add math combo
-    std::vector<const char*> comboOptions(s_FloatingPointMathOptions, s_FloatingPointMathOptions + _countof(s_FloatingPointMathOptions));
-    uiSection->RegisterUIElement<UICombo>(
-        "Lens Math",
-        (int32_t&)m_LensMath,
-        std::move(comboOptions),
-        [this](int32_t cur, int32_t old) {
-            if (m_ContextCreated)
-            {
-                // Refresh
-                UpdateLensContext(false);
-                UpdateLensContext(true);
-            }
-        });
+    std::vector<const char*> comboOptions(s_FloatingPointMathOptions, s_FloatingPointMathOptions + std::size(s_FloatingPointMathOptions));
+    uiSection->RegisterUIElement<UICombo>("Lens Math", (int32_t&)m_LensMath, std::move(comboOptions), [this](int32_t cur, int32_t old) {
+        if (m_ContextCreated)
+        {
+            // Refresh
+            UpdateLensContext(false);
+            UpdateLensContext(true);
+        }
+    });
 
     // Sliders for lens artistic constants
     m_grainScale = 0.01f;
@@ -123,8 +119,7 @@ void LensRenderModule::Init(const json& initData)
 
     InitFfxContext();
 
-    GetFramework()->ConfigureRuntimeShaderRecompiler(
-        [this](void) { DestroyFfxContext(); }, [this](void) { InitFfxContext(); });
+    GetFramework()->ConfigureRuntimeShaderRecompiler([this](void) { DestroyFfxContext(); }, [this](void) { InitFfxContext(); });
 
     // We are now ready for use
     SetModuleReady(true);
@@ -137,12 +132,15 @@ void LensRenderModule::InitFfxContext()
     FfxErrorCode errorCode =
         SDKWrapper::ffxGetInterface(&m_InitializationParameters.backendInterface, GetDevice(), scratchBuffer, scratchBufferSize, FFX_LENS_CONTEXT_COUNT);
     CAULDRON_ASSERT(errorCode == FFX_OK);
-    CauldronAssert(ASSERT_CRITICAL, m_InitializationParameters.backendInterface.fpGetSDKVersion(&m_InitializationParameters.backendInterface) == FFX_SDK_MAKE_VERSION(1, 1, 4),
-        L"FidelityFX Lens 1.1 sample requires linking with a 1.1.4 version SDK backend");
-    CauldronAssert(ASSERT_CRITICAL, ffxLensGetEffectVersion() == FFX_SDK_MAKE_VERSION(1, 1, 0),
-                       L"FidelityFX Lens 1.1 sample requires linking with a 1.1 version FidelityFX Lens library");
-                       
-    m_InitializationParameters.backendInterface.fpRegisterConstantBufferAllocator(&m_InitializationParameters.backendInterface, SDKWrapper::ffxAllocateConstantBuffer);
+    CauldronAssert(ASSERT_CRITICAL,
+                   m_InitializationParameters.backendInterface.fpGetSDKVersion(&m_InitializationParameters.backendInterface) == FFX_SDK_MAKE_VERSION(1, 1, 4),
+                   L"FidelityFX Lens 1.1 sample requires linking with a 1.1.4 version SDK backend");
+    CauldronAssert(ASSERT_CRITICAL,
+                   ffxLensGetEffectVersion() == FFX_SDK_MAKE_VERSION(1, 1, 0),
+                   L"FidelityFX Lens 1.1 sample requires linking with a 1.1 version FidelityFX Lens library");
+
+    m_InitializationParameters.backendInterface.fpRegisterConstantBufferAllocator(&m_InitializationParameters.backendInterface,
+                                                                                  SDKWrapper::ffxAllocateConstantBuffer);
 
     // Init Lens
     UpdateLensContext(true);
@@ -189,7 +187,6 @@ void LensRenderModule::UpdateLensContext(bool enabled)
     }
 }
 
-
 void LensRenderModule::Execute(double deltaTime, CommandList* pCmdList)
 {
     GPUScopedProfileCapture sampleMarker(pCmdList, L"Lens RM");
@@ -208,27 +205,23 @@ void LensRenderModule::Execute(double deltaTime, CommandList* pCmdList)
     // Copy main color to intermediate buffer, then run lens on the intermediate, writing back into the main color buffer
     std::vector<Barrier> barriers;
     barriers.push_back(
-        Barrier::Transition(m_pColorSrc->GetResource(), 
-            ResourceState::NonPixelShaderResource | ResourceState::PixelShaderResource, 
-            ResourceState::CopySource));
-    barriers.push_back(Barrier::Transition(m_pColorIntermediate->GetResource(), 
-        ResourceState::NonPixelShaderResource | ResourceState::PixelShaderResource, 
-        ResourceState::CopyDest));
+        Barrier::Transition(m_pColorSrc->GetResource(), ResourceState::NonPixelShaderResource | ResourceState::PixelShaderResource, ResourceState::CopySource));
+    barriers.push_back(Barrier::Transition(
+        m_pColorIntermediate->GetResource(), ResourceState::NonPixelShaderResource | ResourceState::PixelShaderResource, ResourceState::CopyDest));
     ResourceBarrier(pCmdList, static_cast<uint32_t>(barriers.size()), barriers.data());
 
     TextureCopyDesc desc(m_pColorSrc->GetResource(), m_pColorIntermediate->GetResource());
     CopyTextureRegion(pCmdList, &desc);
 
-    barriers[0] = Barrier::Transition(m_pColorIntermediate->GetResource(), 
-        ResourceState::CopyDest, 
-        ResourceState::NonPixelShaderResource | ResourceState::PixelShaderResource);
-    barriers[1] = Barrier::Transition(m_pColorSrc->GetResource(), 
-        ResourceState::CopySource, 
-        ResourceState::NonPixelShaderResource | ResourceState::PixelShaderResource);
+    barriers[0] = Barrier::Transition(
+        m_pColorIntermediate->GetResource(), ResourceState::CopyDest, ResourceState::NonPixelShaderResource | ResourceState::PixelShaderResource);
+    barriers[1] =
+        Barrier::Transition(m_pColorSrc->GetResource(), ResourceState::CopySource, ResourceState::NonPixelShaderResource | ResourceState::PixelShaderResource);
     ResourceBarrier(pCmdList, static_cast<uint32_t>(barriers.size()), barriers.data());
 
     // All cauldron resources come into a render module in a generic read state (ResourceState::NonPixelShaderResource | ResourceState::PixelShaderResource)
-    dispatchParameters.resource = SDKWrapper::ffxGetResource(m_pColorIntermediate->GetResource(), L"Lens_Intermediate_Color", FFX_RESOURCE_STATE_PIXEL_COMPUTE_READ);
+    dispatchParameters.resource =
+        SDKWrapper::ffxGetResource(m_pColorIntermediate->GetResource(), L"Lens_Intermediate_Color", FFX_RESOURCE_STATE_PIXEL_COMPUTE_READ);
     dispatchParameters.resourceOutput = SDKWrapper::ffxGetResource(m_pColorSrc->GetResource(), L"Lens_Output", FFX_RESOURCE_STATE_PIXEL_COMPUTE_READ);
 
     FfxErrorCode errorCode = ffxLensContextDispatch(&m_LensContext, &dispatchParameters);

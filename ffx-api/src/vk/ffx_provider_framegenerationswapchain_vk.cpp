@@ -1,7 +1,7 @@
 // This file is part of the FidelityFX SDK.
 //
 // Copyright (C) 2024 Advanced Micro Devices, Inc.
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files(the "Software"), to deal
 // in the Software without restriction, including without limitation the rights
@@ -92,7 +92,7 @@ bool ffxProvider_FrameGenerationSwapChain_VK::CanProvide(uint64_t type) const
 uint64_t ffxProvider_FrameGenerationSwapChain_VK::GetId() const
 {
     // FG SwapChain VK, version 1.1.3
-    return 0xF65D'564B'01'001'003ui64;
+    return 0xF65D'564B'0100'1003ULL;
 }
 
 const char* ffxProvider_FrameGenerationSwapChain_VK::GetVersionName() const
@@ -106,7 +106,7 @@ inline VkQueueInfoFFX convertQueueInfo(VkQueueInfoFFXAPI queueInfo)
     info.queue       = queueInfo.queue;
     info.familyIndex = queueInfo.familyIndex;
     info.submitFunc  = queueInfo.submitFunc;
-    return         info;
+    return info;
 }
 
 ffxReturnCode_t ffxProvider_FrameGenerationSwapChain_VK::CreateContext(ffxContext* context, ffxCreateContextDescHeader* header, Allocator& alloc) const
@@ -148,7 +148,7 @@ ffxReturnCode_t ffxProvider_FrameGenerationSwapChain_VK::CreateContext(ffxContex
         TRY2(ffxGetSwapchainReplacementFunctionsVK(internal_context->frameInterpolationInfo.device, &internal_context->replacementFunctions));
 
         *context = internal_context;
-        
+
         return FFX_API_RETURN_OK;
     }
     else
@@ -201,7 +201,8 @@ ffxReturnCode_t ffxProvider_FrameGenerationSwapChain_VK::Configure(ffxContext* c
     }
     else if (auto desc = ffx::DynamicCast<ffxConfigureDescFrameGenerationSwapChainKeyValueVK>(header))
     {
-        TRY2(ffxConfigureFrameInterpolationSwapchainVK(ffxGetSwapchainVK(internal_context->fiSwapChain), static_cast <FfxFrameInterpolationSwapchainConfigureKey> (desc->key), desc->ptr));
+        TRY2(ffxConfigureFrameInterpolationSwapchainVK(
+            ffxGetSwapchainVK(internal_context->fiSwapChain), static_cast<FfxFrameInterpolationSwapchainConfigureKey>(desc->key), desc->ptr));
 
         return FFX_API_RETURN_OK;
     }
@@ -229,12 +230,13 @@ ffxReturnCode_t ffxProvider_FrameGenerationSwapChain_VK::Query(ffxContext* conte
     else if (auto desc = ffx::DynamicCast<ffxQueryDescFrameGenerationSwapChainInterpolationTextureVK>(header))
     {
         *desc->pOutTexture = Convert(ffxGetFrameinterpolationTextureVK(ffxGetSwapchainVK(internal_context->fiSwapChain)));
-        
+
         return FFX_API_RETURN_OK;
     }
     else if (auto desc = ffx::DynamicCast<ffxQueryFrameGenerationSwapChainGetGPUMemoryUsageVK>(header))
     {
-        TRY2(ffxFrameInterpolationSwapchainGetGpuMemoryUsageVK(ffxGetSwapchainVK(internal_context->fiSwapChain), reinterpret_cast <FfxEffectMemoryUsage*> (desc->gpuMemoryUsageFrameGenerationSwapchain)));
+        TRY2(ffxFrameInterpolationSwapchainGetGpuMemoryUsageVK(ffxGetSwapchainVK(internal_context->fiSwapChain),
+                                                               reinterpret_cast<FfxEffectMemoryUsage*>(desc->gpuMemoryUsageFrameGenerationSwapchain)));
         return FFX_API_RETURN_OK;
     }
     else if (auto desc = ffx::DynamicCast<ffxQueryDescSwapchainReplacementFunctionsVK>(header))

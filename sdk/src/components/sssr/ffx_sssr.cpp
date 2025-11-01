@@ -1,7 +1,7 @@
 // This file is part of the FidelityFX SDK.
 //
 // Copyright (C) 2024 Advanced Micro Devices, Inc.
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files(the "Software"), to deal
 // in the Software without restriction, including without limitation the rights
@@ -20,9 +20,9 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-#include <string.h>     // for memset
-#include <math.h>       // for ceil, log2
-#include <algorithm>    // for max
+#include <string.h>   // for memset
+#include <math.h>     // for ceil, log2
+#include <algorithm>  // for max
 using namespace std;
 
 #include <FidelityFX/host/ffx_sssr.h>
@@ -40,53 +40,50 @@ namespace _noiseBuffers
 // lists to map shader resource bindpoint name to resource identifier
 typedef struct ResourceBinding
 {
-    uint32_t    index;
-    wchar_t     name[64];
-}ResourceBinding;
+    uint32_t index;
+    wchar_t  name[64];
+} ResourceBinding;
 
-static const ResourceBinding srvTextureBindingTable[] =
-{
-    {FFX_SSSR_RESOURCE_IDENTIFIER_INPUT_COLOR,                  L"r_input_color"},
-    {FFX_SSSR_RESOURCE_IDENTIFIER_INPUT_DEPTH,                  L"r_input_depth"},
-    {FFX_SSSR_RESOURCE_IDENTIFIER_INPUT_MOTION_VECTORS,         L"r_input_motion_vectors"},
-    {FFX_SSSR_RESOURCE_IDENTIFIER_INPUT_NORMAL,                 L"r_input_normal"},
-    {FFX_SSSR_RESOURCE_IDENTIFIER_INPUT_MATERIAL_PARAMETERS,    L"r_input_material_parameters"},
-    {FFX_SSSR_RESOURCE_IDENTIFIER_INPUT_ENVIRONMENT_MAP,        L"r_input_environment_map"},
-    {FFX_SSSR_RESOURCE_IDENTIFIER_DEPTH_HIERARCHY,              L"r_depth_hierarchy"},
-    {FFX_SSSR_RESOURCE_IDENTIFIER_RADIANCE,                     L"r_radiance"},
-    {FFX_SSSR_RESOURCE_IDENTIFIER_RADIANCE_HISTORY,             L"r_radiance_history"},
-    {FFX_SSSR_RESOURCE_IDENTIFIER_VARIANCE,                     L"r_variance"},
-    {FFX_SSSR_RESOURCE_IDENTIFIER_EXTRACTED_ROUGHNESS,          L"r_extracted_roughness"},
-    {FFX_SSSR_RESOURCE_IDENTIFIER_SOBOL_BUFFER,                 L"r_sobol_buffer"},
-    {FFX_SSSR_RESOURCE_IDENTIFIER_SCRAMBLING_TILE_BUFFER,       L"r_scrambling_tile_buffer"},
-    {FFX_SSSR_RESOURCE_IDENTIFIER_BLUE_NOISE_TEXTURE,           L"r_blue_noise_texture"},
-    {FFX_SSSR_RESOURCE_IDENTIFIER_INPUT_BRDF_TEXTURE,           L"r_input_brdf_texture"},
+static const ResourceBinding srvTextureBindingTable[] = {
+    {FFX_SSSR_RESOURCE_IDENTIFIER_INPUT_COLOR, L"r_input_color"},
+    {FFX_SSSR_RESOURCE_IDENTIFIER_INPUT_DEPTH, L"r_input_depth"},
+    {FFX_SSSR_RESOURCE_IDENTIFIER_INPUT_MOTION_VECTORS, L"r_input_motion_vectors"},
+    {FFX_SSSR_RESOURCE_IDENTIFIER_INPUT_NORMAL, L"r_input_normal"},
+    {FFX_SSSR_RESOURCE_IDENTIFIER_INPUT_MATERIAL_PARAMETERS, L"r_input_material_parameters"},
+    {FFX_SSSR_RESOURCE_IDENTIFIER_INPUT_ENVIRONMENT_MAP, L"r_input_environment_map"},
+    {FFX_SSSR_RESOURCE_IDENTIFIER_DEPTH_HIERARCHY, L"r_depth_hierarchy"},
+    {FFX_SSSR_RESOURCE_IDENTIFIER_RADIANCE, L"r_radiance"},
+    {FFX_SSSR_RESOURCE_IDENTIFIER_RADIANCE_HISTORY, L"r_radiance_history"},
+    {FFX_SSSR_RESOURCE_IDENTIFIER_VARIANCE, L"r_variance"},
+    {FFX_SSSR_RESOURCE_IDENTIFIER_EXTRACTED_ROUGHNESS, L"r_extracted_roughness"},
+    {FFX_SSSR_RESOURCE_IDENTIFIER_SOBOL_BUFFER, L"r_sobol_buffer"},
+    {FFX_SSSR_RESOURCE_IDENTIFIER_SCRAMBLING_TILE_BUFFER, L"r_scrambling_tile_buffer"},
+    {FFX_SSSR_RESOURCE_IDENTIFIER_BLUE_NOISE_TEXTURE, L"r_blue_noise_texture"},
+    {FFX_SSSR_RESOURCE_IDENTIFIER_INPUT_BRDF_TEXTURE, L"r_input_brdf_texture"},
 };
 
-static const ResourceBinding uavTextureBindingTable[] =
-{
-    {FFX_SSSR_RESOURCE_IDENTIFIER_RADIANCE,                        L"rw_radiance"},
-    {FFX_SSSR_RESOURCE_IDENTIFIER_VARIANCE,                        L"rw_variance"},
-    {FFX_SSSR_RESOURCE_IDENTIFIER_EXTRACTED_ROUGHNESS,             L"rw_extracted_roughness"},
-    {FFX_SSSR_RESOURCE_IDENTIFIER_BLUE_NOISE_TEXTURE,              L"rw_blue_noise_texture"},
-    {FFX_SSSR_RESOURCE_IDENTIFIER_DEPTH_HIERARCHY,                 L"rw_depth_hierarchy"},
+static const ResourceBinding uavTextureBindingTable[] = {
+    {FFX_SSSR_RESOURCE_IDENTIFIER_RADIANCE, L"rw_radiance"},
+    {FFX_SSSR_RESOURCE_IDENTIFIER_VARIANCE, L"rw_variance"},
+    {FFX_SSSR_RESOURCE_IDENTIFIER_EXTRACTED_ROUGHNESS, L"rw_extracted_roughness"},
+    {FFX_SSSR_RESOURCE_IDENTIFIER_BLUE_NOISE_TEXTURE, L"rw_blue_noise_texture"},
+    {FFX_SSSR_RESOURCE_IDENTIFIER_DEPTH_HIERARCHY, L"rw_depth_hierarchy"},
 };
 
-static const ResourceBinding uavBufferBindingTable[] =
-{
-    {FFX_SSSR_RESOURCE_IDENTIFIER_RAY_LIST,                        L"rw_ray_list"},
-    {FFX_SSSR_RESOURCE_IDENTIFIER_DENOISER_TILE_LIST,              L"rw_denoiser_tile_list"},
-    {FFX_SSSR_RESOURCE_IDENTIFIER_RAY_COUNTER,                     L"rw_ray_counter"},
+static const ResourceBinding uavBufferBindingTable[] = {
+    {FFX_SSSR_RESOURCE_IDENTIFIER_RAY_LIST, L"rw_ray_list"},
+    {FFX_SSSR_RESOURCE_IDENTIFIER_DENOISER_TILE_LIST, L"rw_denoiser_tile_list"},
+    {FFX_SSSR_RESOURCE_IDENTIFIER_RAY_COUNTER, L"rw_ray_counter"},
     {FFX_SSSR_RESOURCE_IDENTIFIER_INTERSECTION_PASS_INDIRECT_ARGS, L"rw_intersection_pass_indirect_args"},
-    {FFX_SSSR_RESOURCE_IDENTIFIER_SPD_GLOBAL_ATOMIC,               L"rw_spd_global_atomic"},
+    {FFX_SSSR_RESOURCE_IDENTIFIER_SPD_GLOBAL_ATOMIC, L"rw_spd_global_atomic"},
 };
 
-static const ResourceBinding constantBufferBindingTable[] =
-{
-    {FFX_SSSR_CONSTANTBUFFER_IDENTIFIER_SSSR,     L"cbSSSR"},
+static const ResourceBinding constantBufferBindingTable[] = {
+    {FFX_SSSR_CONSTANTBUFFER_IDENTIFIER_SSSR, L"cbSSSR"},
 };
 
-template<typename T> inline T DivideRoundingUp(T a, T b)
+template <typename T>
+inline T DivideRoundingUp(T a, T b)
 {
     return (a + b - (T)1) / b;
 }
@@ -167,21 +164,20 @@ static FfxErrorCode createPipelineStates(FfxSssrContext_Private* context)
 {
     FFX_ASSERT(context);
 
-    const size_t samplerCount = 2;
-    FfxSamplerDescription samplerDescs[samplerCount] = { 
-        { FFX_FILTER_TYPE_MINMAGMIP_LINEAR, FFX_ADDRESS_MODE_CLAMP, FFX_ADDRESS_MODE_CLAMP, FFX_ADDRESS_MODE_WRAP, FFX_BIND_COMPUTE_SHADER_STAGE },
-        { FFX_FILTER_TYPE_MINMAGMIP_LINEAR, FFX_ADDRESS_MODE_CLAMP, FFX_ADDRESS_MODE_CLAMP, FFX_ADDRESS_MODE_CLAMP, FFX_BIND_COMPUTE_SHADER_STAGE }
-    };
-    FfxRootConstantDescription rootConstantDesc = { sizeof(SSSRConstants) / sizeof(uint32_t), FFX_BIND_COMPUTE_SHADER_STAGE };
+    const size_t          samplerCount               = 2;
+    FfxSamplerDescription samplerDescs[samplerCount] = {
+        {FFX_FILTER_TYPE_MINMAGMIP_LINEAR, FFX_ADDRESS_MODE_CLAMP, FFX_ADDRESS_MODE_CLAMP, FFX_ADDRESS_MODE_WRAP, FFX_BIND_COMPUTE_SHADER_STAGE},
+        {FFX_FILTER_TYPE_MINMAGMIP_LINEAR, FFX_ADDRESS_MODE_CLAMP, FFX_ADDRESS_MODE_CLAMP, FFX_ADDRESS_MODE_CLAMP, FFX_BIND_COMPUTE_SHADER_STAGE}};
+    FfxRootConstantDescription rootConstantDesc = {sizeof(SSSRConstants) / sizeof(uint32_t), FFX_BIND_COMPUTE_SHADER_STAGE};
 
-    FfxPipelineDescription pipelineDescription = {};
-    pipelineDescription.contextFlags = 0;
-    pipelineDescription.samplerCount = samplerCount;
-    pipelineDescription.samplers = samplerDescs;
+    FfxPipelineDescription pipelineDescription  = {};
+    pipelineDescription.contextFlags            = 0;
+    pipelineDescription.samplerCount            = samplerCount;
+    pipelineDescription.samplers                = samplerDescs;
     pipelineDescription.rootConstantBufferCount = 1;
-    pipelineDescription.rootConstants = &rootConstantDesc;
-    pipelineDescription.stage = FFX_BIND_COMPUTE_SHADER_STAGE;
-    pipelineDescription.indirectWorkload = 0;
+    pipelineDescription.rootConstants           = &rootConstantDesc;
+    pipelineDescription.stage                   = FFX_BIND_COMPUTE_SHADER_STAGE;
+    pipelineDescription.indirectWorkload        = 0;
 
     // Query device capabilities
     FfxDevice             device = context->contextDescription.backendInterface.device;
@@ -190,8 +186,8 @@ static FfxErrorCode createPipelineStates(FfxSssrContext_Private* context)
 
     // Setup a few options used to determine permutation flags
     bool haveShaderModel66 = capabilities.maximumSupportedShaderModel >= FFX_SHADER_MODEL_6_6;
-    bool supportedFP16 = capabilities.fp16Supported;
-    bool canForceWave64 = false;
+    bool supportedFP16     = capabilities.fp16Supported;
+    bool canForceWave64    = false;
 
     const uint32_t waveLaneCountMin = capabilities.waveLaneCountMin;
     const uint32_t waveLaneCountMax = capabilities.waveLaneCountMax;
@@ -207,31 +203,61 @@ static FfxErrorCode createPipelineStates(FfxSssrContext_Private* context)
     uint32_t contextFlags = context->contextDescription.flags;
 
     // Set up pipeline descriptor (basically RootSignature and binding)
-    wcscpy_s(pipelineDescription.name, L"SSSR-DEPTH_DOWNSAMPLE");
-    FFX_VALIDATE(context->contextDescription.backendInterface.fpCreatePipeline(&context->contextDescription.backendInterface, FFX_EFFECT_SSSR, FFX_SSSR_PASS_DEPTH_DOWNSAMPLE,
-        getPipelinePermutationFlags(contextFlags, FFX_SSSR_PASS_DEPTH_DOWNSAMPLE, supportedFP16, false), &pipelineDescription, context->effectContextId, &context->pipelineDepthDownsample ));
-    wcscpy_s(pipelineDescription.name, L"SSSR-CLASSIFY_TILES");
-    FFX_VALIDATE(context->contextDescription.backendInterface.fpCreatePipeline(&context->contextDescription.backendInterface, FFX_EFFECT_SSSR, FFX_SSSR_PASS_CLASSIFY_TILES,
-        getPipelinePermutationFlags(contextFlags, FFX_SSSR_PASS_CLASSIFY_TILES, supportedFP16, canForceWave64), &pipelineDescription, context->effectContextId, &context->pipelineClassifyTiles));
-    wcscpy_s(pipelineDescription.name, L"SSSR-PREPARE_BLUE_NOISE_TEXTURE");
-    FFX_VALIDATE(context->contextDescription.backendInterface.fpCreatePipeline(&context->contextDescription.backendInterface, FFX_EFFECT_SSSR, FFX_SSSR_PASS_PREPARE_BLUE_NOISE_TEXTURE, 
-        getPipelinePermutationFlags(contextFlags, FFX_SSSR_PASS_PREPARE_BLUE_NOISE_TEXTURE, supportedFP16, canForceWave64), &pipelineDescription, context->effectContextId, &context->pipelinePrepareBlueNoiseTexture));
-    wcscpy_s(pipelineDescription.name, L"SSSR-PREPARE_INDIRECT_ARGS");
-    FFX_VALIDATE(context->contextDescription.backendInterface.fpCreatePipeline(&context->contextDescription.backendInterface, FFX_EFFECT_SSSR, FFX_SSSR_PASS_PREPARE_INDIRECT_ARGS, 
-        getPipelinePermutationFlags(contextFlags, FFX_SSSR_PASS_PREPARE_INDIRECT_ARGS, supportedFP16, canForceWave64), &pipelineDescription, context->effectContextId, &context->pipelinePrepareIndirectArgs));
-    
+    wcscpy(pipelineDescription.name, L"SSSR-DEPTH_DOWNSAMPLE");
+    FFX_VALIDATE(context->contextDescription.backendInterface.fpCreatePipeline(
+        &context->contextDescription.backendInterface,
+        FFX_EFFECT_SSSR,
+        FFX_SSSR_PASS_DEPTH_DOWNSAMPLE,
+        getPipelinePermutationFlags(contextFlags, FFX_SSSR_PASS_DEPTH_DOWNSAMPLE, supportedFP16, false),
+        &pipelineDescription,
+        context->effectContextId,
+        &context->pipelineDepthDownsample));
+    wcscpy(pipelineDescription.name, L"SSSR-CLASSIFY_TILES");
+    FFX_VALIDATE(context->contextDescription.backendInterface.fpCreatePipeline(
+        &context->contextDescription.backendInterface,
+        FFX_EFFECT_SSSR,
+        FFX_SSSR_PASS_CLASSIFY_TILES,
+        getPipelinePermutationFlags(contextFlags, FFX_SSSR_PASS_CLASSIFY_TILES, supportedFP16, canForceWave64),
+        &pipelineDescription,
+        context->effectContextId,
+        &context->pipelineClassifyTiles));
+    wcscpy(pipelineDescription.name, L"SSSR-PREPARE_BLUE_NOISE_TEXTURE");
+    FFX_VALIDATE(context->contextDescription.backendInterface.fpCreatePipeline(
+        &context->contextDescription.backendInterface,
+        FFX_EFFECT_SSSR,
+        FFX_SSSR_PASS_PREPARE_BLUE_NOISE_TEXTURE,
+        getPipelinePermutationFlags(contextFlags, FFX_SSSR_PASS_PREPARE_BLUE_NOISE_TEXTURE, supportedFP16, canForceWave64),
+        &pipelineDescription,
+        context->effectContextId,
+        &context->pipelinePrepareBlueNoiseTexture));
+    wcscpy(pipelineDescription.name, L"SSSR-PREPARE_INDIRECT_ARGS");
+    FFX_VALIDATE(context->contextDescription.backendInterface.fpCreatePipeline(
+        &context->contextDescription.backendInterface,
+        FFX_EFFECT_SSSR,
+        FFX_SSSR_PASS_PREPARE_INDIRECT_ARGS,
+        getPipelinePermutationFlags(contextFlags, FFX_SSSR_PASS_PREPARE_INDIRECT_ARGS, supportedFP16, canForceWave64),
+        &pipelineDescription,
+        context->effectContextId,
+        &context->pipelinePrepareIndirectArgs));
+
     // Indirect workloads
     pipelineDescription.indirectWorkload = 1;
-    wcscpy_s(pipelineDescription.name, L"SSSR-INTERSECTION");
-    FFX_VALIDATE(context->contextDescription.backendInterface.fpCreatePipeline(&context->contextDescription.backendInterface, FFX_EFFECT_SSSR, FFX_SSSR_PASS_INTERSECTION, 
-        getPipelinePermutationFlags(contextFlags ,FFX_SSSR_PASS_INTERSECTION, supportedFP16, canForceWave64), &pipelineDescription, context->effectContextId, &context->pipelineIntersection));
+    wcscpy(pipelineDescription.name, L"SSSR-INTERSECTION");
+    FFX_VALIDATE(context->contextDescription.backendInterface.fpCreatePipeline(
+        &context->contextDescription.backendInterface,
+        FFX_EFFECT_SSSR,
+        FFX_SSSR_PASS_INTERSECTION,
+        getPipelinePermutationFlags(contextFlags, FFX_SSSR_PASS_INTERSECTION, supportedFP16, canForceWave64),
+        &pipelineDescription,
+        context->effectContextId,
+        &context->pipelineIntersection));
 
     // for each pipeline: re-route/fix-up IDs based on names
-    FFX_ASSERT(patchResourceBindings(&context->pipelineDepthDownsample)         == FFX_OK);
-    FFX_ASSERT(patchResourceBindings(&context->pipelineClassifyTiles)           == FFX_OK);
+    FFX_ASSERT(patchResourceBindings(&context->pipelineDepthDownsample) == FFX_OK);
+    FFX_ASSERT(patchResourceBindings(&context->pipelineClassifyTiles) == FFX_OK);
     FFX_ASSERT(patchResourceBindings(&context->pipelinePrepareBlueNoiseTexture) == FFX_OK);
-    FFX_ASSERT(patchResourceBindings(&context->pipelinePrepareIndirectArgs)     == FFX_OK);
-    FFX_ASSERT(patchResourceBindings(&context->pipelineIntersection)            == FFX_OK);
+    FFX_ASSERT(patchResourceBindings(&context->pipelinePrepareIndirectArgs) == FFX_OK);
+    FFX_ASSERT(patchResourceBindings(&context->pipelineIntersection) == FFX_OK);
 
     return FFX_OK;
 }
@@ -252,22 +278,22 @@ static FfxErrorCode sssrCreate(FfxSssrContext_Private* context, const FfxSssrCon
     FFX_RETURN_ON_ERROR(version == FFX_SDK_MAKE_VERSION(1, 1, 4), FFX_ERROR_INVALID_VERSION);
 
     // Create the context.
-    FfxErrorCode errorCode =
-        context->contextDescription.backendInterface.fpCreateBackendContext(&context->contextDescription.backendInterface, FFX_EFFECT_SSSR, nullptr, &context->effectContextId);
+    FfxErrorCode errorCode = context->contextDescription.backendInterface.fpCreateBackendContext(
+        &context->contextDescription.backendInterface, FFX_EFFECT_SSSR, nullptr, &context->effectContextId);
     FFX_RETURN_ON_ERROR(errorCode == FFX_OK, errorCode);
 
     // call out for device caps.
-    errorCode = context->contextDescription.backendInterface.fpGetDeviceCapabilities(
-        &context->contextDescription.backendInterface, &context->deviceCapabilities);
+    errorCode =
+        context->contextDescription.backendInterface.fpGetDeviceCapabilities(&context->contextDescription.backendInterface, &context->deviceCapabilities);
     FFX_RETURN_ON_ERROR(errorCode == FFX_OK, errorCode);
 
     // set defaults
     context->constants.frameIndex = 0;
 
-    const uint32_t elementSize = 4;
-    const uint32_t numPixels = contextDescription->renderSize.width * contextDescription->renderSize.height;
-    uint32_t depthHierarchyMipCount = (uint32_t)ceil(log2(max(contextDescription->renderSize.width, contextDescription->renderSize.height)));
-    depthHierarchyMipCount = min(7u, depthHierarchyMipCount);  // We generate 6 mips from the input depth buffer and keep a copy of it at mip 0 
+    const uint32_t elementSize            = 4;
+    const uint32_t numPixels              = contextDescription->renderSize.width * contextDescription->renderSize.height;
+    uint32_t       depthHierarchyMipCount = (uint32_t)ceil(log2(max(contextDescription->renderSize.width, contextDescription->renderSize.height)));
+    depthHierarchyMipCount                = min(7u, depthHierarchyMipCount);  // We generate 6 mips from the input depth buffer and keep a copy of it at mip 0
 
     const FfxInternalResourceDescription internalSurfaceDesc[] = {
 
@@ -281,7 +307,7 @@ static FfxErrorCode sssrCreate(FfxSssrContext_Private* context, const FfxSssrCon
          depthHierarchyMipCount,
          FFX_RESOURCE_FLAGS_NONE,
          {FFX_RESOURCE_INIT_DATA_TYPE_UNINITIALIZED}},
-        
+
         {FFX_SSSR_RESOURCE_IDENTIFIER_RAY_LIST,
          L"SSSR_RayList",
          FFX_RESOURCE_TYPE_BUFFER,
@@ -429,11 +455,19 @@ static FfxErrorCode sssrCreate(FfxSssrContext_Private* context, const FfxSssrCon
     // clear the SRV resources to NULL.
     memset(context->srvResources, 0, sizeof(context->srvResources));
 
-    for (int32_t currentSurfaceIndex = 0; currentSurfaceIndex < FFX_ARRAY_ELEMENTS(internalSurfaceDesc); ++currentSurfaceIndex) {
-
+    for (int32_t currentSurfaceIndex = 0; currentSurfaceIndex < FFX_ARRAY_ELEMENTS(internalSurfaceDesc); ++currentSurfaceIndex)
+    {
         const FfxInternalResourceDescription* currentSurfaceDescription = &internalSurfaceDesc[currentSurfaceIndex];
-        const FfxResourceDescription resourceDescription = { currentSurfaceDescription->type, currentSurfaceDescription->format, currentSurfaceDescription->width, currentSurfaceDescription->height, currentSurfaceDescription->type == FFX_RESOURCE_TYPE_BUFFER ? 0u : 1u, currentSurfaceDescription->mipCount, FFX_RESOURCE_FLAGS_NONE, currentSurfaceDescription->usage };
-        const FfxResourceStates initialState = (currentSurfaceDescription->usage == FFX_RESOURCE_USAGE_READ_ONLY) ? FFX_RESOURCE_STATE_COMPUTE_READ : FFX_RESOURCE_STATE_UNORDERED_ACCESS;
+        const FfxResourceDescription          resourceDescription       = {currentSurfaceDescription->type,
+                                                                           currentSurfaceDescription->format,
+                                                                           currentSurfaceDescription->width,
+                                                                           currentSurfaceDescription->height,
+                                                            currentSurfaceDescription->type == FFX_RESOURCE_TYPE_BUFFER ? 0u : 1u,
+                                                                           currentSurfaceDescription->mipCount,
+                                                                           FFX_RESOURCE_FLAGS_NONE,
+                                                                           currentSurfaceDescription->usage};
+        const FfxResourceStates               initialState =
+            (currentSurfaceDescription->usage == FFX_RESOURCE_USAGE_READ_ONLY) ? FFX_RESOURCE_STATE_COMPUTE_READ : FFX_RESOURCE_STATE_UNORDERED_ACCESS;
         const FfxCreateResourceDescription createResourceDescription = {FFX_HEAP_TYPE_DEFAULT,
                                                                         resourceDescription,
                                                                         initialState,
@@ -441,7 +475,10 @@ static FfxErrorCode sssrCreate(FfxSssrContext_Private* context, const FfxSssrCon
                                                                         currentSurfaceDescription->id,
                                                                         currentSurfaceDescription->initData};
 
-        FFX_VALIDATE(context->contextDescription.backendInterface.fpCreateResource(&context->contextDescription.backendInterface, &createResourceDescription, context->effectContextId, &context->srvResources[currentSurfaceDescription->id]));
+        FFX_VALIDATE(context->contextDescription.backendInterface.fpCreateResource(&context->contextDescription.backendInterface,
+                                                                                   &createResourceDescription,
+                                                                                   context->effectContextId,
+                                                                                   &context->srvResources[currentSurfaceDescription->id]));
     }
 
     // copy resources to uavResrouces list
@@ -459,11 +496,11 @@ static FfxErrorCode sssrCreate(FfxSssrContext_Private* context, const FfxSssrCon
 
     // Create denoiser context
     FfxDenoiserContextDescription initializationParameters = {};
-    initializationParameters.flags = FfxDenoiserInitializationFlagBits::FFX_DENOISER_REFLECTIONS;
-    initializationParameters.windowSize.width = contextDescription->renderSize.width;
-    initializationParameters.windowSize.height = contextDescription->renderSize.height;
-    initializationParameters.normalsHistoryBufferFormat = contextDescription->normalsHistoryBufferFormat;
-    initializationParameters.backendInterface = contextDescription->backendInterface;
+    initializationParameters.flags                         = FfxDenoiserInitializationFlagBits::FFX_DENOISER_REFLECTIONS;
+    initializationParameters.windowSize.width              = contextDescription->renderSize.width;
+    initializationParameters.windowSize.height             = contextDescription->renderSize.height;
+    initializationParameters.normalsHistoryBufferFormat    = contextDescription->normalsHistoryBufferFormat;
+    initializationParameters.backendInterface              = contextDescription->backendInterface;
 
     FFX_ASSERT(ffxDenoiserContextCreate(&context->denoiserContext, &initializationParameters) == FFX_OK);
 
@@ -480,28 +517,32 @@ static FfxErrorCode sssrRelease(FfxSssrContext_Private* context)
     ffxSafeReleasePipeline(&context->contextDescription.backendInterface, &context->pipelinePrepareIndirectArgs, context->effectContextId);
     ffxSafeReleasePipeline(&context->contextDescription.backendInterface, &context->pipelineIntersection, context->effectContextId);
 
-    // unregister resources not created internally 
-    context->srvResources[FFX_SSSR_RESOURCE_IDENTIFIER_INPUT_COLOR]                 = { FFX_SSSR_RESOURCE_IDENTIFIER_NULL };
-    context->srvResources[FFX_SSSR_RESOURCE_IDENTIFIER_INPUT_DEPTH]                 = { FFX_SSSR_RESOURCE_IDENTIFIER_NULL };
-    context->srvResources[FFX_SSSR_RESOURCE_IDENTIFIER_INPUT_MOTION_VECTORS]        = { FFX_SSSR_RESOURCE_IDENTIFIER_NULL };
-    context->srvResources[FFX_SSSR_RESOURCE_IDENTIFIER_INPUT_NORMAL]                = { FFX_SSSR_RESOURCE_IDENTIFIER_NULL };
-    context->srvResources[FFX_SSSR_RESOURCE_IDENTIFIER_INPUT_MATERIAL_PARAMETERS]   = { FFX_SSSR_RESOURCE_IDENTIFIER_NULL };
-    context->srvResources[FFX_SSSR_RESOURCE_IDENTIFIER_INPUT_ENVIRONMENT_MAP]       = { FFX_SSSR_RESOURCE_IDENTIFIER_NULL };
-    context->srvResources[FFX_SSSR_RESOURCE_IDENTIFIER_RADIANCE]                    = { FFX_SSSR_RESOURCE_IDENTIFIER_NULL };
-    context->srvResources[FFX_SSSR_RESOURCE_IDENTIFIER_RADIANCE_HISTORY]            = { FFX_SSSR_RESOURCE_IDENTIFIER_NULL };
-    context->srvResources[FFX_SSSR_RESOURCE_IDENTIFIER_VARIANCE]                    = { FFX_SSSR_RESOURCE_IDENTIFIER_NULL };
-    context->srvResources[FFX_SSSR_RESOURCE_IDENTIFIER_INPUT_BRDF_TEXTURE]          = { FFX_SSSR_RESOURCE_IDENTIFIER_NULL };
-    context->srvResources[FFX_SSSR_RESOURCE_IDENTIFIER_OUTPUT]                      = { FFX_SSSR_RESOURCE_IDENTIFIER_NULL };
+    // unregister resources not created internally
+    context->srvResources[FFX_SSSR_RESOURCE_IDENTIFIER_INPUT_COLOR]               = {FFX_SSSR_RESOURCE_IDENTIFIER_NULL};
+    context->srvResources[FFX_SSSR_RESOURCE_IDENTIFIER_INPUT_DEPTH]               = {FFX_SSSR_RESOURCE_IDENTIFIER_NULL};
+    context->srvResources[FFX_SSSR_RESOURCE_IDENTIFIER_INPUT_MOTION_VECTORS]      = {FFX_SSSR_RESOURCE_IDENTIFIER_NULL};
+    context->srvResources[FFX_SSSR_RESOURCE_IDENTIFIER_INPUT_NORMAL]              = {FFX_SSSR_RESOURCE_IDENTIFIER_NULL};
+    context->srvResources[FFX_SSSR_RESOURCE_IDENTIFIER_INPUT_MATERIAL_PARAMETERS] = {FFX_SSSR_RESOURCE_IDENTIFIER_NULL};
+    context->srvResources[FFX_SSSR_RESOURCE_IDENTIFIER_INPUT_ENVIRONMENT_MAP]     = {FFX_SSSR_RESOURCE_IDENTIFIER_NULL};
+    context->srvResources[FFX_SSSR_RESOURCE_IDENTIFIER_RADIANCE]                  = {FFX_SSSR_RESOURCE_IDENTIFIER_NULL};
+    context->srvResources[FFX_SSSR_RESOURCE_IDENTIFIER_RADIANCE_HISTORY]          = {FFX_SSSR_RESOURCE_IDENTIFIER_NULL};
+    context->srvResources[FFX_SSSR_RESOURCE_IDENTIFIER_VARIANCE]                  = {FFX_SSSR_RESOURCE_IDENTIFIER_NULL};
+    context->srvResources[FFX_SSSR_RESOURCE_IDENTIFIER_INPUT_BRDF_TEXTURE]        = {FFX_SSSR_RESOURCE_IDENTIFIER_NULL};
+    context->srvResources[FFX_SSSR_RESOURCE_IDENTIFIER_OUTPUT]                    = {FFX_SSSR_RESOURCE_IDENTIFIER_NULL};
 
     // Release the copy resources for those that had init data
-    ffxSafeReleaseCopyResource(&context->contextDescription.backendInterface, context->srvResources[FFX_SSSR_RESOURCE_IDENTIFIER_SOBOL_BUFFER], context->effectContextId);
-    ffxSafeReleaseCopyResource(&context->contextDescription.backendInterface, context->srvResources[FFX_SSSR_RESOURCE_IDENTIFIER_SCRAMBLING_TILE_BUFFER], context->effectContextId);
-    ffxSafeReleaseCopyResource(&context->contextDescription.backendInterface, context->srvResources[FFX_SSSR_RESOURCE_IDENTIFIER_SPD_GLOBAL_ATOMIC], context->effectContextId);
-    ffxSafeReleaseCopyResource(&context->contextDescription.backendInterface, context->srvResources[FFX_SSSR_RESOURCE_IDENTIFIER_RAY_COUNTER], context->effectContextId);
+    ffxSafeReleaseCopyResource(
+        &context->contextDescription.backendInterface, context->srvResources[FFX_SSSR_RESOURCE_IDENTIFIER_SOBOL_BUFFER], context->effectContextId);
+    ffxSafeReleaseCopyResource(
+        &context->contextDescription.backendInterface, context->srvResources[FFX_SSSR_RESOURCE_IDENTIFIER_SCRAMBLING_TILE_BUFFER], context->effectContextId);
+    ffxSafeReleaseCopyResource(
+        &context->contextDescription.backendInterface, context->srvResources[FFX_SSSR_RESOURCE_IDENTIFIER_SPD_GLOBAL_ATOMIC], context->effectContextId);
+    ffxSafeReleaseCopyResource(
+        &context->contextDescription.backendInterface, context->srvResources[FFX_SSSR_RESOURCE_IDENTIFIER_RAY_COUNTER], context->effectContextId);
 
     // release internal resources
-    for (int32_t currentResourceIndex = 0; currentResourceIndex < FFX_SSSR_RESOURCE_IDENTIFIER_COUNT; ++currentResourceIndex) {
-
+    for (int32_t currentResourceIndex = 0; currentResourceIndex < FFX_SSSR_RESOURCE_IDENTIFIER_COUNT; ++currentResourceIndex)
+    {
         ffxSafeReleaseResource(&context->contextDescription.backendInterface, context->srvResources[currentResourceIndex], context->effectContextId);
     }
 
@@ -515,60 +556,66 @@ static FfxErrorCode sssrRelease(FfxSssrContext_Private* context)
 
 static void populateComputeJobResources(FfxSssrContext_Private* context, const FfxPipelineState* pipeline, FfxComputeJobDescription* jobDescriptor)
 {
-    for (uint32_t currentShaderResourceViewIndex = 0; currentShaderResourceViewIndex < pipeline->srvTextureCount; ++currentShaderResourceViewIndex) {
-
-        const uint32_t currentResourceId = pipeline->srvTextureBindings[currentShaderResourceViewIndex].resourceIdentifier;
-        const FfxResourceInternal currentResource = context->srvResources[currentResourceId];
+    for (uint32_t currentShaderResourceViewIndex = 0; currentShaderResourceViewIndex < pipeline->srvTextureCount; ++currentShaderResourceViewIndex)
+    {
+        const uint32_t            currentResourceId                         = pipeline->srvTextureBindings[currentShaderResourceViewIndex].resourceIdentifier;
+        const FfxResourceInternal currentResource                           = context->srvResources[currentResourceId];
         jobDescriptor->srvTextures[currentShaderResourceViewIndex].resource = currentResource;
 #ifdef FFX_DEBUG
-        wcscpy_s(jobDescriptor->srvTextures[currentShaderResourceViewIndex].name, pipeline->srvTextureBindings[currentShaderResourceViewIndex].name);
+        wcscpy(jobDescriptor->srvTextures[currentShaderResourceViewIndex].name, pipeline->srvTextureBindings[currentShaderResourceViewIndex].name);
 #endif
     }
 
     uint32_t uavEntry = 0;  // Uav resource offset (accounts for uav arrays)
-    for (uint32_t currentUnorderedAccessViewIndex = 0; currentUnorderedAccessViewIndex < pipeline->uavTextureCount; ++currentUnorderedAccessViewIndex) {
+    for (uint32_t currentUnorderedAccessViewIndex = 0; currentUnorderedAccessViewIndex < pipeline->uavTextureCount; ++currentUnorderedAccessViewIndex)
+    {
 #ifdef FFX_DEBUG
-        wcscpy_s(jobDescriptor->uavTextures[currentUnorderedAccessViewIndex].name, pipeline->uavTextureBindings[currentUnorderedAccessViewIndex].name);
+        wcscpy(jobDescriptor->uavTextures[currentUnorderedAccessViewIndex].name, pipeline->uavTextureBindings[currentUnorderedAccessViewIndex].name);
 #endif
-        const uint32_t bindEntry = pipeline->uavTextureBindings[currentUnorderedAccessViewIndex].arrayIndex;
-        const uint32_t currentResourceId = pipeline->uavTextureBindings[currentUnorderedAccessViewIndex].resourceIdentifier;
-        const FfxResourceInternal currentResource = context->uavResources[currentResourceId];
+        const uint32_t            bindEntry         = pipeline->uavTextureBindings[currentUnorderedAccessViewIndex].arrayIndex;
+        const uint32_t            currentResourceId = pipeline->uavTextureBindings[currentUnorderedAccessViewIndex].resourceIdentifier;
+        const FfxResourceInternal currentResource   = context->uavResources[currentResourceId];
 
         // Don't over-subscribe mips (default to mip 0 once we've exhausted min mip)
-        FfxResourceDescription resDesc = context->contextDescription.backendInterface.fpGetResourceDescription(&context->contextDescription.backendInterface, currentResource);
+        FfxResourceDescription resDesc =
+            context->contextDescription.backendInterface.fpGetResourceDescription(&context->contextDescription.backendInterface, currentResource);
         jobDescriptor->uavTextures[uavEntry].resource = currentResource;
-        jobDescriptor->uavTextures[uavEntry++].mip = (bindEntry < resDesc.mipCount) ? bindEntry : 0;
+        jobDescriptor->uavTextures[uavEntry++].mip    = (bindEntry < resDesc.mipCount) ? bindEntry : 0;
     }
 
     // Buffer uav
-    for (uint32_t currentUnorderedAccessViewIndex = 0; currentUnorderedAccessViewIndex < pipeline->uavBufferCount; ++currentUnorderedAccessViewIndex) {
-
-        const uint32_t currentResourceId = pipeline->uavBufferBindings[currentUnorderedAccessViewIndex].resourceIdentifier;
-        const FfxResourceInternal currentResource = context->uavResources[currentResourceId];
+    for (uint32_t currentUnorderedAccessViewIndex = 0; currentUnorderedAccessViewIndex < pipeline->uavBufferCount; ++currentUnorderedAccessViewIndex)
+    {
+        const uint32_t            currentResourceId                         = pipeline->uavBufferBindings[currentUnorderedAccessViewIndex].resourceIdentifier;
+        const FfxResourceInternal currentResource                           = context->uavResources[currentResourceId];
         jobDescriptor->uavBuffers[currentUnorderedAccessViewIndex].resource = currentResource;
 #ifdef FFX_DEBUG
-        wcscpy_s(jobDescriptor->uavBuffers[currentUnorderedAccessViewIndex].name, pipeline->uavBufferBindings[currentUnorderedAccessViewIndex].name);
+        wcscpy(jobDescriptor->uavBuffers[currentUnorderedAccessViewIndex].name, pipeline->uavBufferBindings[currentUnorderedAccessViewIndex].name);
 #endif
     }
 
-    for (uint32_t currentRootConstantIndex = 0; currentRootConstantIndex < pipeline->constCount; ++currentRootConstantIndex) {
+    for (uint32_t currentRootConstantIndex = 0; currentRootConstantIndex < pipeline->constCount; ++currentRootConstantIndex)
+    {
 #ifdef FFX_DEBUG
-        wcscpy_s(jobDescriptor->cbNames[currentRootConstantIndex], pipeline->constantBufferBindings[currentRootConstantIndex].name);
+        wcscpy(jobDescriptor->cbNames[currentRootConstantIndex], pipeline->constantBufferBindings[currentRootConstantIndex].name);
 #endif
         jobDescriptor->cbs[currentRootConstantIndex] = context->constantBuffers[pipeline->constantBufferBindings[currentRootConstantIndex].resourceIdentifier];
     }
 }
 
-static void scheduleIndirectDispatch(FfxSssrContext_Private* context, const FfxPipelineState* pipeline, const FfxResourceInternal* commandArgument, const uint32_t offset = 0)
+static void scheduleIndirectDispatch(FfxSssrContext_Private*    context,
+                                     const FfxPipelineState*    pipeline,
+                                     const FfxResourceInternal* commandArgument,
+                                     const uint32_t             offset = 0)
 {
     FfxComputeJobDescription jobDescriptor = {};
-    jobDescriptor.pipeline = *pipeline;
-    jobDescriptor.cmdArgument = *commandArgument;
-    jobDescriptor.cmdArgumentOffset = offset;
-    populateComputeJobResources(context , pipeline, &jobDescriptor);
+    jobDescriptor.pipeline                 = *pipeline;
+    jobDescriptor.cmdArgument              = *commandArgument;
+    jobDescriptor.cmdArgumentOffset        = offset;
+    populateComputeJobResources(context, pipeline, &jobDescriptor);
 
-    FfxGpuJobDescription dispatchJob = { FFX_GPU_JOB_COMPUTE };
-    wcscpy_s(dispatchJob.jobLabel, pipeline->name);
+    FfxGpuJobDescription dispatchJob = {FFX_GPU_JOB_COMPUTE};
+    wcscpy(dispatchJob.jobLabel, pipeline->name);
     dispatchJob.computeJobDescriptor = jobDescriptor;
     context->contextDescription.backendInterface.fpScheduleGpuJob(&context->contextDescription.backendInterface, &dispatchJob);
 }
@@ -576,7 +623,7 @@ static void scheduleIndirectDispatch(FfxSssrContext_Private* context, const FfxP
 static void scheduleDispatch(FfxSssrContext_Private* context, const FfxPipelineState* pipeline, uint32_t dispatchX, uint32_t dispatchY)
 {
     FfxGpuJobDescription dispatchJob = {FFX_GPU_JOB_COMPUTE};
-    wcscpy_s(dispatchJob.jobLabel, pipeline->name);
+    wcscpy(dispatchJob.jobLabel, pipeline->name);
     dispatchJob.computeJobDescriptor.dimensions[0] = dispatchX;
     dispatchJob.computeJobDescriptor.dimensions[1] = dispatchY;
     dispatchJob.computeJobDescriptor.dimensions[2] = 1;
@@ -591,8 +638,8 @@ static FfxErrorCode sssrDispatch(FfxSssrContext_Private* context, const FfxSssrD
     // take a short cut to the command list
     FfxCommandList commandList = params->commandList;
     // try and refresh shaders first. Early exit in case of error.
-    if (context->refreshPipelineStates) {
-
+    if (context->refreshPipelineStates)
+    {
         context->refreshPipelineStates = false;
 
         const FfxErrorCode errorCode = createPipelineStates(context);
@@ -600,10 +647,11 @@ static FfxErrorCode sssrDispatch(FfxSssrContext_Private* context, const FfxSssrD
     }
 
     // zero initialise radiance and variance buffers
-    if (context->constants.frameIndex == 0) {
+    if (context->constants.frameIndex == 0)
+    {
         FfxGpuJobDescription job = {};
-        job.jobType = FFX_GPU_JOB_CLEAR_FLOAT;
-        wcscpy_s(job.jobLabel, L"Zero initialize resource");
+        job.jobType              = FFX_GPU_JOB_CLEAR_FLOAT;
+        wcscpy(job.jobLabel, L"Zero initialize resource");
         job.clearJobDescriptor.color[0] = 0.0f;
         job.clearJobDescriptor.color[1] = 0.0f;
         job.clearJobDescriptor.color[2] = 0.0f;
@@ -616,7 +664,8 @@ static FfxErrorCode sssrDispatch(FfxSssrContext_Private* context, const FfxSssrD
             FFX_SSSR_RESOURCE_IDENTIFIER_VARIANCE_1,
         };
 
-        for (const uint32_t *resourceID = resourceIDs; resourceID < resourceIDs + FFX_ARRAY_ELEMENTS(resourceIDs); ++resourceID) {
+        for (const uint32_t* resourceID = resourceIDs; resourceID < resourceIDs + FFX_ARRAY_ELEMENTS(resourceIDs); ++resourceID)
+        {
             job.clearJobDescriptor.target = context->uavResources[*resourceID];
             context->contextDescription.backendInterface.fpScheduleGpuJob(&context->contextDescription.backendInterface, &job);
         }
@@ -624,30 +673,53 @@ static FfxErrorCode sssrDispatch(FfxSssrContext_Private* context, const FfxSssrD
 
     // Prepare per frame descriptor tables
     const bool isOddFrame = !!(context->constants.frameIndex & 1);
-    
-    const uint32_t radianceAResourceIndex   = isOddFrame ? FFX_SSSR_RESOURCE_IDENTIFIER_RADIANCE_0  : FFX_SSSR_RESOURCE_IDENTIFIER_RADIANCE_1;
-    const uint32_t radianceBResourceIndex   = isOddFrame ? FFX_SSSR_RESOURCE_IDENTIFIER_RADIANCE_1  : FFX_SSSR_RESOURCE_IDENTIFIER_RADIANCE_0;
-    const uint32_t varianceAResourceIndex   = isOddFrame ? FFX_SSSR_RESOURCE_IDENTIFIER_VARIANCE_0  : FFX_SSSR_RESOURCE_IDENTIFIER_VARIANCE_1;
-    const uint32_t varianceBResourceIndex   = isOddFrame ? FFX_SSSR_RESOURCE_IDENTIFIER_VARIANCE_1  : FFX_SSSR_RESOURCE_IDENTIFIER_VARIANCE_0;
 
-    context->contextDescription.backendInterface.fpRegisterResource(&context->contextDescription.backendInterface, &params->color,                  context->effectContextId, &context->srvResources[FFX_SSSR_RESOURCE_IDENTIFIER_INPUT_COLOR]); 
-    context->contextDescription.backendInterface.fpRegisterResource(&context->contextDescription.backendInterface, &params->depth,                  context->effectContextId, &context->srvResources[FFX_SSSR_RESOURCE_IDENTIFIER_INPUT_DEPTH]);
-    context->contextDescription.backendInterface.fpRegisterResource(&context->contextDescription.backendInterface, &params->motionVectors,          context->effectContextId, &context->srvResources[FFX_SSSR_RESOURCE_IDENTIFIER_INPUT_MOTION_VECTORS]);
-    context->contextDescription.backendInterface.fpRegisterResource(&context->contextDescription.backendInterface, &params->normal,                 context->effectContextId, &context->srvResources[FFX_SSSR_RESOURCE_IDENTIFIER_INPUT_NORMAL]);
-    context->contextDescription.backendInterface.fpRegisterResource(&context->contextDescription.backendInterface, &params->materialParameters,     context->effectContextId, &context->srvResources[FFX_SSSR_RESOURCE_IDENTIFIER_INPUT_MATERIAL_PARAMETERS]);
-    context->contextDescription.backendInterface.fpRegisterResource(&context->contextDescription.backendInterface, &params->environmentMap,         context->effectContextId, &context->srvResources[FFX_SSSR_RESOURCE_IDENTIFIER_INPUT_ENVIRONMENT_MAP]);
-    context->contextDescription.backendInterface.fpRegisterResource(&context->contextDescription.backendInterface, &params->brdfTexture,            context->effectContextId, &context->srvResources[FFX_SSSR_RESOURCE_IDENTIFIER_INPUT_BRDF_TEXTURE]);
-    context->contextDescription.backendInterface.fpRegisterResource(&context->contextDescription.backendInterface, &params->output,                 context->effectContextId, &context->srvResources[FFX_SSSR_RESOURCE_IDENTIFIER_OUTPUT]);
+    const uint32_t radianceAResourceIndex = isOddFrame ? FFX_SSSR_RESOURCE_IDENTIFIER_RADIANCE_0 : FFX_SSSR_RESOURCE_IDENTIFIER_RADIANCE_1;
+    const uint32_t radianceBResourceIndex = isOddFrame ? FFX_SSSR_RESOURCE_IDENTIFIER_RADIANCE_1 : FFX_SSSR_RESOURCE_IDENTIFIER_RADIANCE_0;
+    const uint32_t varianceAResourceIndex = isOddFrame ? FFX_SSSR_RESOURCE_IDENTIFIER_VARIANCE_0 : FFX_SSSR_RESOURCE_IDENTIFIER_VARIANCE_1;
+    const uint32_t varianceBResourceIndex = isOddFrame ? FFX_SSSR_RESOURCE_IDENTIFIER_VARIANCE_1 : FFX_SSSR_RESOURCE_IDENTIFIER_VARIANCE_0;
 
-    context->srvResources[FFX_SSSR_RESOURCE_IDENTIFIER_RADIANCE]                = context->srvResources[radianceAResourceIndex];
-    context->srvResources[FFX_SSSR_RESOURCE_IDENTIFIER_RADIANCE_HISTORY]        = context->srvResources[radianceBResourceIndex];
-    context->srvResources[FFX_SSSR_RESOURCE_IDENTIFIER_VARIANCE]                = context->srvResources[varianceBResourceIndex];
+    context->contextDescription.backendInterface.fpRegisterResource(&context->contextDescription.backendInterface,
+                                                                    &params->color,
+                                                                    context->effectContextId,
+                                                                    &context->srvResources[FFX_SSSR_RESOURCE_IDENTIFIER_INPUT_COLOR]);
+    context->contextDescription.backendInterface.fpRegisterResource(&context->contextDescription.backendInterface,
+                                                                    &params->depth,
+                                                                    context->effectContextId,
+                                                                    &context->srvResources[FFX_SSSR_RESOURCE_IDENTIFIER_INPUT_DEPTH]);
+    context->contextDescription.backendInterface.fpRegisterResource(&context->contextDescription.backendInterface,
+                                                                    &params->motionVectors,
+                                                                    context->effectContextId,
+                                                                    &context->srvResources[FFX_SSSR_RESOURCE_IDENTIFIER_INPUT_MOTION_VECTORS]);
+    context->contextDescription.backendInterface.fpRegisterResource(&context->contextDescription.backendInterface,
+                                                                    &params->normal,
+                                                                    context->effectContextId,
+                                                                    &context->srvResources[FFX_SSSR_RESOURCE_IDENTIFIER_INPUT_NORMAL]);
+    context->contextDescription.backendInterface.fpRegisterResource(&context->contextDescription.backendInterface,
+                                                                    &params->materialParameters,
+                                                                    context->effectContextId,
+                                                                    &context->srvResources[FFX_SSSR_RESOURCE_IDENTIFIER_INPUT_MATERIAL_PARAMETERS]);
+    context->contextDescription.backendInterface.fpRegisterResource(&context->contextDescription.backendInterface,
+                                                                    &params->environmentMap,
+                                                                    context->effectContextId,
+                                                                    &context->srvResources[FFX_SSSR_RESOURCE_IDENTIFIER_INPUT_ENVIRONMENT_MAP]);
+    context->contextDescription.backendInterface.fpRegisterResource(&context->contextDescription.backendInterface,
+                                                                    &params->brdfTexture,
+                                                                    context->effectContextId,
+                                                                    &context->srvResources[FFX_SSSR_RESOURCE_IDENTIFIER_INPUT_BRDF_TEXTURE]);
+    context->contextDescription.backendInterface.fpRegisterResource(
+        &context->contextDescription.backendInterface, &params->output, context->effectContextId, &context->srvResources[FFX_SSSR_RESOURCE_IDENTIFIER_OUTPUT]);
 
-    context->uavResources[FFX_SSSR_RESOURCE_IDENTIFIER_RADIANCE]                = context->uavResources[radianceAResourceIndex];
-    context->uavResources[FFX_SSSR_RESOURCE_IDENTIFIER_VARIANCE]                = context->uavResources[varianceAResourceIndex];
+    context->srvResources[FFX_SSSR_RESOURCE_IDENTIFIER_RADIANCE]         = context->srvResources[radianceAResourceIndex];
+    context->srvResources[FFX_SSSR_RESOURCE_IDENTIFIER_RADIANCE_HISTORY] = context->srvResources[radianceBResourceIndex];
+    context->srvResources[FFX_SSSR_RESOURCE_IDENTIFIER_VARIANCE]         = context->srvResources[varianceBResourceIndex];
+
+    context->uavResources[FFX_SSSR_RESOURCE_IDENTIFIER_RADIANCE] = context->uavResources[radianceAResourceIndex];
+    context->uavResources[FFX_SSSR_RESOURCE_IDENTIFIER_VARIANCE] = context->uavResources[varianceAResourceIndex];
 
     // actual resource size may differ from render/display resolution (e.g. due to Hw/API restrictions), so query the descriptor for UVs adjustment
-    const FfxResourceDescription resourceDescInputColor = context->contextDescription.backendInterface.fpGetResourceDescription(&context->contextDescription.backendInterface, context->srvResources[FFX_SSSR_RESOURCE_IDENTIFIER_INPUT_COLOR]);
+    const FfxResourceDescription resourceDescInputColor = context->contextDescription.backendInterface.fpGetResourceDescription(
+        &context->contextDescription.backendInterface, context->srvResources[FFX_SSSR_RESOURCE_IDENTIFIER_INPUT_COLOR]);
     FFX_ASSERT(resourceDescInputColor.type == FFX_RESOURCE_TYPE_TEXTURE2D);
 
     const uint32_t width  = uint32_t(params->renderSize.width ? params->renderSize.width : resourceDescInputColor.width);
@@ -675,7 +747,10 @@ static FfxErrorCode sssrDispatch(FfxSssrContext_Private* context, const FfxSssrD
     context->constants.temporalVarianceGuidedTracingEnabled = params->temporalVarianceGuidedTracingEnabled ? 1 : 0;
 
     // initialize constantBuffers data
-    context->contextDescription.backendInterface.fpStageConstantBufferDataFunc(&context->contextDescription.backendInterface, &context->constants, sizeof(context->constants), &context->constantBuffers[FFX_SSSR_CONSTANTBUFFER_IDENTIFIER_SSSR]);
+    context->contextDescription.backendInterface.fpStageConstantBufferDataFunc(&context->contextDescription.backendInterface,
+                                                                               &context->constants,
+                                                                               sizeof(context->constants),
+                                                                               &context->constantBuffers[FFX_SSSR_CONSTANTBUFFER_IDENTIFIER_SSSR]);
 
     // Mip map depth hierarchy
     scheduleDispatch(context, &context->pipelineDepthDownsample, DivideRoundingUp(width, 64u), DivideRoundingUp(height, 64u));
@@ -688,28 +763,39 @@ static FfxErrorCode sssrDispatch(FfxSssrContext_Private* context, const FfxSssrD
 
     // Execute all jobs up to date so resources will be in the correct state when importing into the denoiser
     context->contextDescription.backendInterface.fpExecuteGpuJobs(&context->contextDescription.backendInterface, commandList, context->effectContextId);
-    
+
     FfxDenoiserReflectionsDispatchDescription denoiserDispatchParameters = {};
-    denoiserDispatchParameters.commandList              = commandList;
-    denoiserDispatchParameters.depthHierarchy           = context->contextDescription.backendInterface.fpGetResource(&context->contextDescription.backendInterface, context->srvResources[FFX_SSSR_RESOURCE_IDENTIFIER_DEPTH_HIERARCHY]);
-    denoiserDispatchParameters.motionVectors            = context->contextDescription.backendInterface.fpGetResource(&context->contextDescription.backendInterface, context->srvResources[FFX_SSSR_RESOURCE_IDENTIFIER_INPUT_MOTION_VECTORS]);
-    denoiserDispatchParameters.normal                   = context->contextDescription.backendInterface.fpGetResource(&context->contextDescription.backendInterface, context->srvResources[FFX_SSSR_RESOURCE_IDENTIFIER_INPUT_NORMAL]);
-    denoiserDispatchParameters.radianceA                = context->contextDescription.backendInterface.fpGetResource(&context->contextDescription.backendInterface, context->srvResources[FFX_SSSR_RESOURCE_IDENTIFIER_RADIANCE]);
-    denoiserDispatchParameters.radianceB                = context->contextDescription.backendInterface.fpGetResource(&context->contextDescription.backendInterface, context->srvResources[FFX_SSSR_RESOURCE_IDENTIFIER_RADIANCE_HISTORY]);
-    denoiserDispatchParameters.varianceA                = context->contextDescription.backendInterface.fpGetResource(&context->contextDescription.backendInterface, context->uavResources[FFX_SSSR_RESOURCE_IDENTIFIER_VARIANCE]);
-    denoiserDispatchParameters.varianceB                = context->contextDescription.backendInterface.fpGetResource(&context->contextDescription.backendInterface, context->srvResources[FFX_SSSR_RESOURCE_IDENTIFIER_VARIANCE]);
-    denoiserDispatchParameters.extractedRoughness       = context->contextDescription.backendInterface.fpGetResource(&context->contextDescription.backendInterface, context->srvResources[FFX_SSSR_RESOURCE_IDENTIFIER_EXTRACTED_ROUGHNESS]);
-    denoiserDispatchParameters.denoiserTileList         = context->contextDescription.backendInterface.fpGetResource(&context->contextDescription.backendInterface, context->uavResources[FFX_SSSR_RESOURCE_IDENTIFIER_DENOISER_TILE_LIST]);
-    denoiserDispatchParameters.indirectArgumentsBuffer  = context->contextDescription.backendInterface.fpGetResource(&context->contextDescription.backendInterface, context->uavResources[FFX_SSSR_RESOURCE_IDENTIFIER_INTERSECTION_PASS_INDIRECT_ARGS]);
-    denoiserDispatchParameters.output                   = context->contextDescription.backendInterface.fpGetResource(&context->contextDescription.backendInterface, context->srvResources[FFX_SSSR_RESOURCE_IDENTIFIER_OUTPUT]);
-    denoiserDispatchParameters.renderSize               = params->renderSize;
-    denoiserDispatchParameters.motionVectorScale        = params->motionVectorScale;
-    denoiserDispatchParameters.normalsUnpackMul         = params->normalUnPackMul;
-    denoiserDispatchParameters.normalsUnpackAdd         = params->normalUnPackAdd; 
-    denoiserDispatchParameters.isRoughnessPerceptual    = params->isRoughnessPerceptual;
-    denoiserDispatchParameters.temporalStabilityFactor  = params->temporalStabilityFactor;
-    denoiserDispatchParameters.roughnessThreshold       = params->roughnessThreshold;
-    denoiserDispatchParameters.frameIndex               = context->constants.frameIndex;
+    denoiserDispatchParameters.commandList                               = commandList;
+    denoiserDispatchParameters.depthHierarchy                            = context->contextDescription.backendInterface.fpGetResource(
+        &context->contextDescription.backendInterface, context->srvResources[FFX_SSSR_RESOURCE_IDENTIFIER_DEPTH_HIERARCHY]);
+    denoiserDispatchParameters.motionVectors = context->contextDescription.backendInterface.fpGetResource(
+        &context->contextDescription.backendInterface, context->srvResources[FFX_SSSR_RESOURCE_IDENTIFIER_INPUT_MOTION_VECTORS]);
+    denoiserDispatchParameters.normal = context->contextDescription.backendInterface.fpGetResource(
+        &context->contextDescription.backendInterface, context->srvResources[FFX_SSSR_RESOURCE_IDENTIFIER_INPUT_NORMAL]);
+    denoiserDispatchParameters.radianceA = context->contextDescription.backendInterface.fpGetResource(
+        &context->contextDescription.backendInterface, context->srvResources[FFX_SSSR_RESOURCE_IDENTIFIER_RADIANCE]);
+    denoiserDispatchParameters.radianceB = context->contextDescription.backendInterface.fpGetResource(
+        &context->contextDescription.backendInterface, context->srvResources[FFX_SSSR_RESOURCE_IDENTIFIER_RADIANCE_HISTORY]);
+    denoiserDispatchParameters.varianceA = context->contextDescription.backendInterface.fpGetResource(
+        &context->contextDescription.backendInterface, context->uavResources[FFX_SSSR_RESOURCE_IDENTIFIER_VARIANCE]);
+    denoiserDispatchParameters.varianceB = context->contextDescription.backendInterface.fpGetResource(
+        &context->contextDescription.backendInterface, context->srvResources[FFX_SSSR_RESOURCE_IDENTIFIER_VARIANCE]);
+    denoiserDispatchParameters.extractedRoughness = context->contextDescription.backendInterface.fpGetResource(
+        &context->contextDescription.backendInterface, context->srvResources[FFX_SSSR_RESOURCE_IDENTIFIER_EXTRACTED_ROUGHNESS]);
+    denoiserDispatchParameters.denoiserTileList = context->contextDescription.backendInterface.fpGetResource(
+        &context->contextDescription.backendInterface, context->uavResources[FFX_SSSR_RESOURCE_IDENTIFIER_DENOISER_TILE_LIST]);
+    denoiserDispatchParameters.indirectArgumentsBuffer = context->contextDescription.backendInterface.fpGetResource(
+        &context->contextDescription.backendInterface, context->uavResources[FFX_SSSR_RESOURCE_IDENTIFIER_INTERSECTION_PASS_INDIRECT_ARGS]);
+    denoiserDispatchParameters.output                = context->contextDescription.backendInterface.fpGetResource(&context->contextDescription.backendInterface,
+                                                                                                   context->srvResources[FFX_SSSR_RESOURCE_IDENTIFIER_OUTPUT]);
+    denoiserDispatchParameters.renderSize            = params->renderSize;
+    denoiserDispatchParameters.motionVectorScale     = params->motionVectorScale;
+    denoiserDispatchParameters.normalsUnpackMul      = params->normalUnPackMul;
+    denoiserDispatchParameters.normalsUnpackAdd      = params->normalUnPackAdd;
+    denoiserDispatchParameters.isRoughnessPerceptual = params->isRoughnessPerceptual;
+    denoiserDispatchParameters.temporalStabilityFactor = params->temporalStabilityFactor;
+    denoiserDispatchParameters.roughnessThreshold      = params->roughnessThreshold;
+    denoiserDispatchParameters.frameIndex              = context->constants.frameIndex;
 
     memcpy(&denoiserDispatchParameters.invProjection, &params->invProjection, sizeof(params->invProjection));
     memcpy(&denoiserDispatchParameters.invView, &params->invView, sizeof(params->invView));
@@ -731,22 +817,18 @@ FfxErrorCode ffxSssrContextCreate(FfxSssrContext* context, const FfxSssrContextD
     memset(context, 0, sizeof(FfxSssrContext));
 
     // check pointers are valid.
-    FFX_RETURN_ON_ERROR(
-        context,
-        FFX_ERROR_INVALID_POINTER);
-    FFX_RETURN_ON_ERROR(
-        contextDescription,
-        FFX_ERROR_INVALID_POINTER);
+    FFX_RETURN_ON_ERROR(context, FFX_ERROR_INVALID_POINTER);
+    FFX_RETURN_ON_ERROR(contextDescription, FFX_ERROR_INVALID_POINTER);
 
     // validate that all callbacks are set for the interface
     FFX_RETURN_ON_ERROR(contextDescription->backendInterface.fpGetSDKVersion, FFX_ERROR_INCOMPLETE_INTERFACE);
     FFX_RETURN_ON_ERROR(contextDescription->backendInterface.fpGetDeviceCapabilities, FFX_ERROR_INCOMPLETE_INTERFACE);
-    FFX_RETURN_ON_ERROR(contextDescription->backendInterface.fpCreateBackendContext,  FFX_ERROR_INCOMPLETE_INTERFACE);
+    FFX_RETURN_ON_ERROR(contextDescription->backendInterface.fpCreateBackendContext, FFX_ERROR_INCOMPLETE_INTERFACE);
     FFX_RETURN_ON_ERROR(contextDescription->backendInterface.fpDestroyBackendContext, FFX_ERROR_INCOMPLETE_INTERFACE);
 
     // if a scratch buffer is declared, then we must have a size
-    if (contextDescription->backendInterface.scratchBuffer) {
-
+    if (contextDescription->backendInterface.scratchBuffer)
+    {
         FFX_RETURN_ON_ERROR(contextDescription->backendInterface.scratchBufferSize, FFX_ERROR_INCOMPLETE_INTERFACE);
     }
 
@@ -755,7 +837,7 @@ FfxErrorCode ffxSssrContextCreate(FfxSssrContext* context, const FfxSssrContextD
 
     // create the context.
     FfxSssrContext_Private* contextPrivate = (FfxSssrContext_Private*)(context);
-    const FfxErrorCode errorCode = sssrCreate(contextPrivate, contextDescription);
+    const FfxErrorCode      errorCode      = sssrCreate(contextPrivate, contextDescription);
 
     return errorCode;
 }
@@ -766,7 +848,7 @@ FfxErrorCode ffxSssrContextDestroy(FfxSssrContext* context)
 
     // destroy the context.
     FfxSssrContext_Private* contextPrivate = (FfxSssrContext_Private*)(context);
-    const FfxErrorCode errorCode = sssrRelease(contextPrivate);
+    const FfxErrorCode      errorCode      = sssrRelease(contextPrivate);
     return errorCode;
 }
 
@@ -774,11 +856,11 @@ FfxErrorCode ffxSssrContextDispatch(FfxSssrContext* context, const FfxSssrDispat
 {
     FFX_RETURN_ON_ERROR(context, FFX_ERROR_INVALID_POINTER);
     FFX_RETURN_ON_ERROR(dispatchParams, FFX_ERROR_INVALID_POINTER);
-    
+
     FfxSssrContext_Private* contextPrivate = (FfxSssrContext_Private*)(context);
 
     // validate that renderSize is within the maximum.
-    FFX_RETURN_ON_ERROR(dispatchParams->renderSize.width  <= contextPrivate->contextDescription.renderSize.width,  FFX_ERROR_OUT_OF_RANGE);
+    FFX_RETURN_ON_ERROR(dispatchParams->renderSize.width <= contextPrivate->contextDescription.renderSize.width, FFX_ERROR_OUT_OF_RANGE);
     FFX_RETURN_ON_ERROR(dispatchParams->renderSize.height <= contextPrivate->contextDescription.renderSize.height, FFX_ERROR_OUT_OF_RANGE);
     FFX_RETURN_ON_ERROR(contextPrivate->device, FFX_ERROR_NULL_DEVICE);
 

@@ -1,7 +1,7 @@
 // This file is part of the FidelityFX SDK.
 //
 // Copyright (C) 2024 Advanced Micro Devices, Inc.
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files(the "Software"), to deal
 // in the Software without restriction, including without limitation the rights
@@ -28,22 +28,24 @@
 #include "FrameInterpolationSwapchainDebugPacingVS.h"
 #include "FrameInterpolationSwapchainDebugPacingPS.h"
 
+#include <array>
+
 constexpr uint32_t c_debugPacingRingBufferSize = 4;
 
-VkDevice              s_debugPacingDevice                 = VK_NULL_HANDLE;
-VkDescriptorPool      s_debugPacingDescriptorPool         = VK_NULL_HANDLE;
-VkPipelineLayout      s_debugPacingPipelineLayout         = VK_NULL_HANDLE;
-VkRenderPass          s_debugPacingRenderPass             = VK_NULL_HANDLE;
-VkPipeline            s_debugPacingPipeline               = VK_NULL_HANDLE;
-VkFormat              s_debugPacingAttachmentFormat       = VK_FORMAT_UNDEFINED;
-uint32_t              s_debugPacingFrameIndex             = 0;
-uint32_t              s_debugPacingRingIndex              = 0;
-VkImageView           s_debugPacingImageRTViews[c_debugPacingRingBufferSize];
-VkFramebuffer         s_debugPacingFramebuffers[c_debugPacingRingBufferSize];
+VkDevice         s_debugPacingDevice           = VK_NULL_HANDLE;
+VkDescriptorPool s_debugPacingDescriptorPool   = VK_NULL_HANDLE;
+VkPipelineLayout s_debugPacingPipelineLayout   = VK_NULL_HANDLE;
+VkRenderPass     s_debugPacingRenderPass       = VK_NULL_HANDLE;
+VkPipeline       s_debugPacingPipeline         = VK_NULL_HANDLE;
+VkFormat         s_debugPacingAttachmentFormat = VK_FORMAT_UNDEFINED;
+uint32_t         s_debugPacingFrameIndex       = 0;
+uint32_t         s_debugPacingRingIndex        = 0;
+VkImageView      s_debugPacingImageRTViews[c_debugPacingRingBufferSize];
+VkFramebuffer    s_debugPacingFramebuffers[c_debugPacingRingBufferSize];
 
-
-#define FFX_BACKEND_API_ERROR_ON_VK_ERROR(res) if (res != VK_SUCCESS) return FFX_ERROR_BACKEND_API_ERROR;
-
+#define FFX_BACKEND_API_ERROR_ON_VK_ERROR(res) \
+    if (res != VK_SUCCESS)                     \
+        return FFX_ERROR_BACKEND_API_ERROR;
 
 void releaseDebugPacingGpuResources(const VkAllocationCallbacks* pAllocator)
 {
@@ -59,12 +61,12 @@ void releaseDebugPacingGpuResources(const VkAllocationCallbacks* pAllocator)
     vkDestroyRenderPass(s_debugPacingDevice, s_debugPacingRenderPass, pAllocator);
     s_debugPacingRenderPass = nullptr;
 
-    for (uint32_t i = 0; i < _countof(s_debugPacingImageRTViews); ++i)
+    for (uint32_t i = 0; i < std::size(s_debugPacingImageRTViews); ++i)
     {
         vkDestroyImageView(s_debugPacingDevice, s_debugPacingImageRTViews[i], pAllocator);
         s_debugPacingImageRTViews[i] = VK_NULL_HANDLE;
     }
-    for (uint32_t i = 0; i < _countof(s_debugPacingFramebuffers); ++i)
+    for (uint32_t i = 0; i < std::size(s_debugPacingFramebuffers); ++i)
     {
         vkDestroyFramebuffer(s_debugPacingDevice, s_debugPacingFramebuffers[i], pAllocator);
         s_debugPacingFramebuffers[i] = VK_NULL_HANDLE;
@@ -265,7 +267,7 @@ VkResult CreateDebugPacingPipeline(VkDevice device, VkFormat fmt, const VkAlloca
         dynamicStateCreateInfo.sType                            = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
         dynamicStateCreateInfo.pNext                            = nullptr;
         dynamicStateCreateInfo.flags                            = 0;
-        dynamicStateCreateInfo.dynamicStateCount                = _countof(dynamicStates);
+        dynamicStateCreateInfo.dynamicStateCount                = std::size(dynamicStates);
         dynamicStateCreateInfo.pDynamicStates                   = dynamicStates;
 
         // dynamic so put dummy values
@@ -305,7 +307,7 @@ VkResult CreateDebugPacingPipeline(VkDevice device, VkFormat fmt, const VkAlloca
         info.sType                        = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
         info.pNext                        = nullptr;
         info.flags                        = 0;
-        info.stageCount                   = _countof(shaderStageCreateInfos);
+        info.stageCount                   = std::size(shaderStageCreateInfos);
         info.pStages                      = shaderStageCreateInfos;
         info.pVertexInputState            = &vertexInputStateCreateInfo;
         info.pInputAssemblyState          = &inputAssemblyStateCreateInfo;
@@ -417,9 +419,9 @@ FFX_API FfxErrorCode ffxFrameInterpolationDebugPacing(const FfxPresentCallbackDe
 {
     FFX_ASSERT(userContext != nullptr);
 
-    const VkAllocationCallbacks* pAllocator  = nullptr;
+    const VkAllocationCallbacks* pAllocator = nullptr;
 
-    VkDevice device            = reinterpret_cast<VkDevice>(params->device);
+    VkDevice device = reinterpret_cast<VkDevice>(params->device);
 
     const FfxDebugPacingContext* ctx            = reinterpret_cast<const FfxDebugPacingContext*>(userContext);
     VkPhysicalDevice             physicalDevice = ctx->physicalDevice;
@@ -435,13 +437,13 @@ FFX_API FfxErrorCode ffxFrameInterpolationDebugPacing(const FfxPresentCallbackDe
 
     VkCommandBuffer commandBuffer   = reinterpret_cast<VkCommandBuffer>(params->commandList);
     VkImage         backbufferImage = reinterpret_cast<VkImage>(params->currentBackBuffer.resource);
-    
+
     FFX_ASSERT(commandBuffer != VK_NULL_HANDLE);
     FFX_ASSERT(s_debugPacingPipeline != VK_NULL_HANDLE);
     FFX_ASSERT(backbufferImage != VK_NULL_HANDLE);
 
-    const uint32_t backBufferWidth    = params->currentBackBuffer.description.width;
-    const uint32_t backBufferHeight   = params->currentBackBuffer.description.height;
+    const uint32_t backBufferWidth  = params->currentBackBuffer.description.width;
+    const uint32_t backBufferHeight = params->currentBackBuffer.description.height;
 
     auto flipBarrier = [](VkImageMemoryBarrier& barrier) {
         VkAccessFlags tmpAccess = barrier.srcAccessMask;
@@ -497,8 +499,8 @@ FFX_API FfxErrorCode ffxFrameInterpolationDebugPacing(const FfxPresentCallbackDe
     FFX_BACKEND_API_ERROR_ON_VK_ERROR(res);
 
     VkImageMemoryBarrier barrier;
-    VkPipelineStageFlags srcStageMask       = 0;
-    VkPipelineStageFlags dstStageMask       = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    VkPipelineStageFlags srcStageMask = 0;
+    VkPipelineStageFlags dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
 
     barrier.sType                           = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
     barrier.pNext                           = nullptr;
@@ -519,7 +521,7 @@ FFX_API FfxErrorCode ffxFrameInterpolationDebugPacing(const FfxPresentCallbackDe
         srcStageMask = srcStageMask | getVKPipelineStageFlagsFromResourceState(params->currentBackBuffer.state);
         vkCmdPipelineBarrier(commandBuffer, srcStageMask, dstStageMask, 0, 0, nullptr, 0, nullptr, 1, &barrier);
     }
-        
+
     VkRenderPassBeginInfo beginInfo    = {};
     beginInfo.sType                    = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
     beginInfo.pNext                    = nullptr;

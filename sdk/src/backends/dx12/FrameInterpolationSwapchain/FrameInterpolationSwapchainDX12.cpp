@@ -1,7 +1,7 @@
 // This file is part of the FidelityFX SDK.
 //
 // Copyright (C) 2024 Advanced Micro Devices, Inc.
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files(the "Software"), to deal
 // in the Software without restriction, including without limitation the rights
@@ -33,7 +33,7 @@
 #pragma comment(lib, "winmm.lib")
 
 FfxErrorCode ffxRegisterFrameinterpolationUiResourceDX12(FfxSwapchain gameSwapChain, FfxResource uiResource, uint32_t flags)
-        {
+{
     IDXGISwapChain4* swapChain = ffxGetDX12SwapchainPtr(gameSwapChain);
 
     FrameInterpolationSwapChainDX12* framinterpolationSwapchain = nullptr;
@@ -55,14 +55,14 @@ FFX_API FfxErrorCode ffxSetFrameGenerationConfigToSwapchainDX12(FfxFrameGenerati
 
     if (config->swapChain)
     {
-        IDXGISwapChain4*                 swapChain = ffxGetDX12SwapchainPtr(config->swapChain);
+        IDXGISwapChain4*                 swapChain                  = ffxGetDX12SwapchainPtr(config->swapChain);
         FrameInterpolationSwapChainDX12* framinterpolationSwapchain = nullptr;
         if (SUCCEEDED(swapChain->QueryInterface(IID_PPV_ARGS(&framinterpolationSwapchain))))
         {
             framinterpolationSwapchain->setFrameGenerationConfig(config);
 
             SafeRelease(framinterpolationSwapchain);
-            
+
             result = FFX_OK;
         }
     }
@@ -73,20 +73,20 @@ FFX_API FfxErrorCode ffxSetFrameGenerationConfigToSwapchainDX12(FfxFrameGenerati
 FfxErrorCode ffxConfigureFrameInterpolationSwapchainDX12(FfxSwapchain gameSwapChain, FfxFrameInterpolationSwapchainConfigureKey key, void* valuePtr)
 {
     IDXGISwapChain4* swapChain = ffxGetDX12SwapchainPtr(gameSwapChain);
-    
+
     FrameInterpolationSwapChainDX12* framinterpolationSwapchain = nullptr;
     if (SUCCEEDED(swapChain->QueryInterface(IID_PPV_ARGS(&framinterpolationSwapchain))))
     {
         switch (key)
         {
-            case FFX_FI_SWAPCHAIN_CONFIGURE_KEY_WAITCALLBACK:
-                framinterpolationSwapchain->setWaitCallback(static_cast<FfxWaitCallbackFunc>(valuePtr));
+        case FFX_FI_SWAPCHAIN_CONFIGURE_KEY_WAITCALLBACK:
+            framinterpolationSwapchain->setWaitCallback(static_cast<FfxWaitCallbackFunc>(valuePtr));
             break;
-            case FFX_FI_SWAPCHAIN_CONFIGURE_KEY_FRAMEPACINGTUNING:
-                if (valuePtr != nullptr)
-                {
-                    framinterpolationSwapchain->setFramePacingTuning(static_cast<FfxSwapchainFramePacingTuning*>(valuePtr));
-                }
+        case FFX_FI_SWAPCHAIN_CONFIGURE_KEY_FRAMEPACINGTUNING:
+            if (valuePtr != nullptr)
+            {
+                framinterpolationSwapchain->setFramePacingTuning(static_cast<FfxSwapchainFramePacingTuning*>(valuePtr));
+            }
             break;
         }
         SafeRelease(framinterpolationSwapchain);
@@ -99,8 +99,8 @@ FfxErrorCode ffxConfigureFrameInterpolationSwapchainDX12(FfxSwapchain gameSwapCh
 
 FfxResource ffxGetFrameinterpolationTextureDX12(FfxSwapchain gameSwapChain)
 {
-    FfxResource                      res = { nullptr };
-    IDXGISwapChain4* swapChain = ffxGetDX12SwapchainPtr(gameSwapChain);
+    FfxResource                      res                        = {nullptr};
+    IDXGISwapChain4*                 swapChain                  = ffxGetDX12SwapchainPtr(gameSwapChain);
     FrameInterpolationSwapChainDX12* framinterpolationSwapchain = nullptr;
     if (SUCCEEDED(swapChain->QueryInterface(IID_PPV_ARGS(&framinterpolationSwapchain))))
     {
@@ -133,9 +133,9 @@ FfxErrorCode ffxGetFrameinterpolationCommandlistDX12(FfxSwapchain gameSwapChain,
 FfxErrorCode ffxFrameInterpolationSwapchainGetGpuMemoryUsageDX12(FfxSwapchain gameSwapChain, FfxEffectMemoryUsage* vramUsage)
 {
     FFX_RETURN_ON_ERROR(vramUsage, FFX_ERROR_INVALID_POINTER);
-    FfxErrorCode result = FFX_ERROR_INVALID_ARGUMENT;
+    FfxErrorCode     result    = FFX_ERROR_INVALID_ARGUMENT;
     IDXGISwapChain4* swapChain = ffxGetDX12SwapchainPtr(gameSwapChain);
-    
+
     FrameInterpolationSwapChainDX12* framinterpolationSwapchain = nullptr;
     if (SUCCEEDED(swapChain->QueryInterface(IID_PPV_ARGS(&framinterpolationSwapchain))))
     {
@@ -159,10 +159,8 @@ FfxErrorCode ffxReplaceSwapchainForFrameinterpolationDX12(FfxCommandQueue gameQu
     HWND                            hWnd;
     DXGI_SWAP_CHAIN_DESC1           desc1;
     DXGI_SWAP_CHAIN_FULLSCREEN_DESC fullscreenDesc;
-    if (SUCCEEDED(dxgiGameSwapChain->GetDesc1(&desc1)) &&
-        SUCCEEDED(dxgiGameSwapChain->GetFullscreenDesc(&fullscreenDesc)) &&
-        SUCCEEDED(dxgiGameSwapChain->GetHwnd(&hWnd))
-        )
+    if (SUCCEEDED(dxgiGameSwapChain->GetDesc1(&desc1)) && SUCCEEDED(dxgiGameSwapChain->GetFullscreenDesc(&fullscreenDesc)) &&
+        SUCCEEDED(dxgiGameSwapChain->GetHwnd(&hWnd)))
     {
         FFX_ASSERT_MESSAGE(fullscreenDesc.Windowed == TRUE, "Illegal to release a fullscreen swap chain.");
 
@@ -182,30 +180,30 @@ FfxErrorCode ffxReplaceSwapchainForFrameinterpolationDX12(FfxCommandQueue gameQu
     return status;
 }
 
-FfxErrorCode ffxCreateFrameinterpolationSwapchainDX12(const DXGI_SWAP_CHAIN_DESC*   desc,
-                                                      ID3D12CommandQueue*           queue,
-                                                      IDXGIFactory*                 dxgiFactory,
-                                                      FfxSwapchain&                 outGameSwapChain)
+FfxErrorCode ffxCreateFrameinterpolationSwapchainDX12(const DXGI_SWAP_CHAIN_DESC* desc,
+                                                      ID3D12CommandQueue*         queue,
+                                                      IDXGIFactory*               dxgiFactory,
+                                                      FfxSwapchain&               outGameSwapChain)
 {
     FFX_ASSERT(desc);
     FFX_ASSERT(queue);
     FFX_ASSERT(dxgiFactory);
 
     DXGI_SWAP_CHAIN_DESC1 desc1{};
-    desc1.Width         = desc->BufferDesc.Width;
-    desc1.Height        = desc->BufferDesc.Height;
-    desc1.Format        = desc->BufferDesc.Format;
-    desc1.SampleDesc    = desc->SampleDesc;
-    desc1.BufferUsage   = desc->BufferUsage;
-    desc1.BufferCount   = desc->BufferCount;
-    desc1.SwapEffect    = desc->SwapEffect;
-    desc1.Flags         = desc->Flags;
+    desc1.Width       = desc->BufferDesc.Width;
+    desc1.Height      = desc->BufferDesc.Height;
+    desc1.Format      = desc->BufferDesc.Format;
+    desc1.SampleDesc  = desc->SampleDesc;
+    desc1.BufferUsage = desc->BufferUsage;
+    desc1.BufferCount = desc->BufferCount;
+    desc1.SwapEffect  = desc->SwapEffect;
+    desc1.Flags       = desc->Flags;
 
     // for clarity, params not part of DXGI_SWAP_CHAIN_DESC
     // implicit behavior of DXGI when you call the IDXGIFactory::CreateSwapChain
-    desc1.Scaling       = DXGI_SCALING_STRETCH;
-    desc1.AlphaMode     = DXGI_ALPHA_MODE_UNSPECIFIED;
-    desc1.Stereo        = FALSE;
+    desc1.Scaling   = DXGI_SCALING_STRETCH;
+    desc1.AlphaMode = DXGI_ALPHA_MODE_UNSPECIFIED;
+    desc1.Stereo    = FALSE;
 
     DXGI_SWAP_CHAIN_FULLSCREEN_DESC fullscreenDesc{};
     fullscreenDesc.Scaling          = desc->BufferDesc.Scaling;
@@ -289,11 +287,11 @@ void setSwapChainBufferResourceInfo(IDXGISwapChain4* swapChain, bool isInterpola
     if (SUCCEEDED(swapChain->GetBuffer(currBackbufferIndex, IID_PPV_ARGS(&swapchainBackbuffer))))
     {
         FfxFrameInterpolationSwapChainResourceInfo info{};
-        info.version = FFX_SDK_MAKE_VERSION(FFX_FRAME_INTERPOLATION_SWAP_CHAIN_VERSION_MAJOR,
+        info.version        = FFX_SDK_MAKE_VERSION(FFX_FRAME_INTERPOLATION_SWAP_CHAIN_VERSION_MAJOR,
                                             FFX_FRAME_INTERPOLATION_SWAP_CHAIN_VERSION_MINOR,
                                             FFX_FRAME_INTERPOLATION_SWAP_CHAIN_VERSION_PATCH);
         info.isInterpolated = isInterpolated;
-        HRESULT hr = swapchainBackbuffer->SetPrivateData(IID_IFfxFrameInterpolationSwapChainResourceInfo, sizeof(info), &info);
+        HRESULT hr          = swapchainBackbuffer->SetPrivateData(IID_IFfxFrameInterpolationSwapChainResourceInfo, sizeof(info), &info);
         FFX_ASSERT(SUCCEEDED(hr));
 
         /*
@@ -314,7 +312,6 @@ void setSwapChainBufferResourceInfo(IDXGISwapChain4* swapChain, bool isInterpola
 
 HRESULT compositeSwapChainFrame(FrameinterpolationPresentInfo* presenter, PacingData* pacingEntry, uint32_t frameID)
 {
-
     const PacingData::FrameInfo& frameInfo = pacingEntry->frames[frameID];
 
     presenter->presentQueue->Wait(presenter->interpolationFence, frameInfo.interpolationCompletedFenceValue);
@@ -328,14 +325,15 @@ HRESULT compositeSwapChainFrame(FrameinterpolationPresentInfo* presenter, Pacing
         presenter->swapChain->GetBuffer(currBackbufferIndex, IID_PPV_ARGS(&swapchainBackbuffer));
 
         FfxPresentCallbackDescription desc{};
-        desc.commandList            = ffxGetCommandListDX12(gpuCommands->reset());
-        desc.device                 = presenter->device;
-        desc.isInterpolatedFrame    = frameID != PacingData::FrameType::Real;
-        desc.outputSwapChainBuffer  = ffxGetResourceDX12(swapchainBackbuffer, ffxGetResourceDescriptionDX12(swapchainBackbuffer), nullptr, FFX_RESOURCE_STATE_PRESENT);
-        desc.currentBackBuffer      = frameInfo.resource;
-        desc.currentUI              = pacingEntry->uiSurface;
-        desc.usePremulAlpha         = pacingEntry->usePremulAlphaComposite;
-        desc.frameID                = pacingEntry->currentFrameID;
+        desc.commandList         = ffxGetCommandListDX12(gpuCommands->reset());
+        desc.device              = presenter->device;
+        desc.isInterpolatedFrame = frameID != PacingData::FrameType::Real;
+        desc.outputSwapChainBuffer =
+            ffxGetResourceDX12(swapchainBackbuffer, ffxGetResourceDescriptionDX12(swapchainBackbuffer), nullptr, FFX_RESOURCE_STATE_PRESENT);
+        desc.currentBackBuffer = frameInfo.resource;
+        desc.currentUI         = pacingEntry->uiSurface;
+        desc.usePremulAlpha    = pacingEntry->usePremulAlphaComposite;
+        desc.frameID           = pacingEntry->currentFrameID;
 
         ffxFrameInterpolationDebugPacing(&desc);
 
@@ -343,7 +341,6 @@ HRESULT compositeSwapChainFrame(FrameinterpolationPresentInfo* presenter, Pacing
 
         SafeRelease(swapchainBackbuffer);
     }
-
 
     if (pacingEntry->presentCallback)
     {
@@ -354,14 +351,15 @@ HRESULT compositeSwapChainFrame(FrameinterpolationPresentInfo* presenter, Pacing
         presenter->swapChain->GetBuffer(currBackbufferIndex, IID_PPV_ARGS(&swapchainBackbuffer));
 
         FfxPresentCallbackDescription desc{};
-        desc.commandList            = ffxGetCommandListDX12(gpuCommands->reset());
-        desc.device                 = presenter->device;
-        desc.isInterpolatedFrame    = frameID != PacingData::FrameType::Real;
-        desc.outputSwapChainBuffer  = ffxGetResourceDX12(swapchainBackbuffer, ffxGetResourceDescriptionDX12(swapchainBackbuffer), nullptr, FFX_RESOURCE_STATE_PRESENT);
-        desc.currentBackBuffer      = frameInfo.resource;
-        desc.currentUI              = pacingEntry->uiSurface;
-        desc.usePremulAlpha         = pacingEntry->usePremulAlphaComposite;
-        desc.frameID                = pacingEntry->currentFrameID;
+        desc.commandList         = ffxGetCommandListDX12(gpuCommands->reset());
+        desc.device              = presenter->device;
+        desc.isInterpolatedFrame = frameID != PacingData::FrameType::Real;
+        desc.outputSwapChainBuffer =
+            ffxGetResourceDX12(swapchainBackbuffer, ffxGetResourceDescriptionDX12(swapchainBackbuffer), nullptr, FFX_RESOURCE_STATE_PRESENT);
+        desc.currentBackBuffer = frameInfo.resource;
+        desc.currentUI         = pacingEntry->uiSurface;
+        desc.usePremulAlpha    = pacingEntry->usePremulAlphaComposite;
+        desc.frameID           = pacingEntry->currentFrameID;
 
         pacingEntry->presentCallback(&desc, pacingEntry->presentCallbackContext);
 
@@ -380,10 +378,10 @@ void presentToSwapChain(FrameinterpolationPresentInfo* presenter, PacingData* pa
 {
     const PacingData::FrameInfo& frameInfo = pacingEntry->frames[frameType];
 
-    const UINT uSyncInterval            = pacingEntry->vsync ? 1 : 0;
-    const bool bExclusiveFullscreen     = isExclusiveFullscreen(presenter->swapChain);
-    const bool bSetAllowTearingFlag     = pacingEntry->tearingSupported && !bExclusiveFullscreen && (0 == uSyncInterval);
-    const UINT uFlags                   = bSetAllowTearingFlag * DXGI_PRESENT_ALLOW_TEARING;
+    const UINT uSyncInterval        = pacingEntry->vsync ? 1 : 0;
+    const bool bExclusiveFullscreen = isExclusiveFullscreen(presenter->swapChain);
+    const bool bSetAllowTearingFlag = pacingEntry->tearingSupported && !bExclusiveFullscreen && (0 == uSyncInterval);
+    const UINT uFlags               = bSetAllowTearingFlag * DXGI_PRESENT_ALLOW_TEARING;
 
     struct AntiLag2Data
     {
@@ -409,7 +407,6 @@ void presentToSwapChain(FrameinterpolationPresentInfo* presenter, PacingData* pa
 
     // tick frames sent for presentation
     presenter->presentQueue->Signal(presenter->presentFence, frameInfo.presentIndex);
-
 }
 
 DWORD WINAPI presenterThread(LPVOID param)
@@ -418,7 +415,7 @@ DWORD WINAPI presenterThread(LPVOID param)
 
     if (presenter)
     {
-        UINT64 numFramesSentForPresentation = 0;
+        UINT64  numFramesSentForPresentation = 0;
         int64_t qpcFrequency                 = 0;
 
         LARGE_INTEGER freq;
@@ -426,13 +423,12 @@ DWORD WINAPI presenterThread(LPVOID param)
         qpcFrequency = freq.QuadPart;
 
         TIMECAPS timerCaps;
-        timerCaps.wPeriodMin = UNKNOWN_TIMER_RESOlUTION; //Default to unknown to prevent sleep without guarantees.
+        timerCaps.wPeriodMin = UNKNOWN_TIMER_RESOlUTION;  //Default to unknown to prevent sleep without guarantees.
 
         presenter->previousPresentQpc = 0;
 
         while (!presenter->shutdown)
         {
-
             WaitForSingleObject(presenter->pacerEvent, INFINITE);
 
             if (!presenter->shutdown)
@@ -463,7 +459,6 @@ DWORD WINAPI presenterThread(LPVOID param)
                                 presenter->presentQueue->Signal(presenter->replacementBufferFence, entry.replacementBufferFenceSignal);
                             }
 
-                            
                             MMRESULT result = timeGetDevCaps(&timerCaps, sizeof(timerCaps));
                             if (result != MMSYSERR_NOERROR || !presenter->allowHybridSpin)
                             {
@@ -488,7 +483,6 @@ DWORD WINAPI presenterThread(LPVOID param)
                     }
 
                     numFramesSentForPresentation = entry.numFramesSentForPresentationBase + entry.numFramesToPresent;
-
                 }
             }
         }
@@ -515,10 +509,10 @@ DWORD WINAPI interpolationThread(LPVOID param)
 
             SimpleMovingAverage<10, double> frameTime{};
 
-            int64_t previousQpc = 0;
+            int64_t previousQpc   = 0;
             int64_t previousDelta = 0;
             int64_t qpcFrequency;
-            QueryPerformanceFrequency(reinterpret_cast<LARGE_INTEGER*>(&qpcFrequency)); 
+            QueryPerformanceFrequency(reinterpret_cast<LARGE_INTEGER*>(&qpcFrequency));
 
             while (!presenter->shutdown)
             {
@@ -532,36 +526,31 @@ DWORD WINAPI interpolationThread(LPVOID param)
                     presenter->scheduledInterpolations.invalidate();
 
                     LeaveCriticalSection(&presenter->criticalSectionScheduledFrame);
-                    
+
                     int64_t preWaitQPC = 0;
                     QueryPerformanceCounter(reinterpret_cast<LARGE_INTEGER*>(&preWaitQPC));
                     int64_t previousPresentQPC = presenter->previousPresentQpc;
-                    int64_t targetDelta = (previousPresentQPC + previousDelta) - preWaitQPC;
-                    
+                    int64_t targetDelta        = (previousPresentQPC + previousDelta) - preWaitQPC;
+
                     //Risk of late wake if overthreading. If allowed, use WaitForSingleObject to wait for interpolationFence if the target is more than 2ms later.
-                    if (previousPresentQPC && (targetDelta * 1000000) / qpcFrequency > 2000)  
+                    if (previousPresentQPC && (targetDelta * 1000000) / qpcFrequency > 2000)
                     {
-                        waitForFenceValue(
-                            presenter->interpolationFence, 
-                            entry.frames[PacingData::FrameType::Interpolated_1].interpolationCompletedFenceValue, 
-                            INFINITE,
-                            nullptr,
-                            presenter->allowWaitForSingleObjectOnFence
-                        );
-                        
+                        waitForFenceValue(presenter->interpolationFence,
+                                          entry.frames[PacingData::FrameType::Interpolated_1].interpolationCompletedFenceValue,
+                                          INFINITE,
+                                          nullptr,
+                                          presenter->allowWaitForSingleObjectOnFence);
                     }
                     else
                     {
                         // spin to wait for interpolationFence if the target is less than 2ms.
-                        waitForFenceValue(
-                            presenter->interpolationFence, 
-                            entry.frames[PacingData::FrameType::Interpolated_1].interpolationCompletedFenceValue, 
-                            INFINITE,
-                            nullptr,
-                            false
-                        );
+                        waitForFenceValue(presenter->interpolationFence,
+                                          entry.frames[PacingData::FrameType::Interpolated_1].interpolationCompletedFenceValue,
+                                          INFINITE,
+                                          nullptr,
+                                          false);
                     }
-                    
+
                     SetEvent(presenter->interpolationEvent);
 
                     int64_t currentQpc = 0;
@@ -583,13 +572,13 @@ DWORD WINAPI interpolationThread(LPVOID param)
                     }
 
                     // set presentation time: reduce based on variance and subract safety margin so we don't lock on a framerate lower than necessary
-                    int64_t qpcSafetyMargin         = int64_t(qpcFrequency * presenter->safetyMarginInSec);
-                    const int64_t conservativeAvg   = int64_t(frameTime.getAverage() * 0.5 - frameTime.getVariance() * presenter->varianceFactor);
-                    const int64_t deltaToUse        = conservativeAvg > qpcSafetyMargin ? (conservativeAvg - qpcSafetyMargin) : 0;
+                    int64_t       qpcSafetyMargin = int64_t(qpcFrequency * presenter->safetyMarginInSec);
+                    const int64_t conservativeAvg = int64_t(frameTime.getAverage() * 0.5 - frameTime.getVariance() * presenter->varianceFactor);
+                    const int64_t deltaToUse      = conservativeAvg > qpcSafetyMargin ? (conservativeAvg - qpcSafetyMargin) : 0;
                     entry.frames[PacingData::FrameType::Interpolated_1].presentQpcDelta = deltaToUse;
                     entry.frames[PacingData::FrameType::Real].presentQpcDelta           = deltaToUse;
                     previousDelta                                                       = deltaToUse;
-                    
+
                     // schedule presents
                     EnterCriticalSection(&presenter->criticalSectionScheduledFrame);
                     presenter->scheduledPresents = entry;
@@ -618,8 +607,8 @@ bool FrameInterpolationSwapChainDX12::verifyBackbufferDuplicateResources()
     {
         if (SUCCEEDED(buffer->GetDevice(IID_PPV_ARGS(&device))))
         {
-            auto bufferDesc = buffer->GetDesc();
-            D3D12_CLEAR_VALUE clearValue{ bufferDesc.Format, 0.f, 0.f, 0.f, 1.f };
+            auto              bufferDesc = buffer->GetDesc();
+            D3D12_CLEAR_VALUE clearValue{bufferDesc.Format, 0.f, 0.f, 0.f, 1.f};
 
             D3D12_HEAP_PROPERTIES heapProperties{};
             D3D12_HEAP_FLAGS      heapFlags;
@@ -634,14 +623,13 @@ bool FrameInterpolationSwapChainDX12::verifyBackbufferDuplicateResources()
             {
                 if (replacementSwapBuffers[i].resource == nullptr)
                 {
-                    
                     // create game render output resource
                     if (FAILED(device->CreateCommittedResource(&heapProperties,
-                                                                heapFlags,
-                                                                &bufferDesc,
-                                                                D3D12_RESOURCE_STATE_PRESENT,
-                                                                &clearValue,
-                                                                IID_PPV_ARGS(&replacementSwapBuffers[i].resource))))
+                                                               heapFlags,
+                                                               &bufferDesc,
+                                                               D3D12_RESOURCE_STATE_PRESENT,
+                                                               &clearValue,
+                                                               IID_PPV_ARGS(&replacementSwapBuffers[i].resource))))
                     {
                         hr |= E_FAIL;
                     }
@@ -654,14 +642,18 @@ bool FrameInterpolationSwapChainDX12::verifyBackbufferDuplicateResources()
                 }
             }
 
-            for (size_t i = 0; i < _countof(interpolationOutputs); i++)
+            for (size_t i = 0; i < std::size(interpolationOutputs); i++)
             {
                 // create interpolation output resource
                 bufferDesc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
                 if (interpolationOutputs[i].resource == nullptr)
                 {
-                    if (FAILED(device->CreateCommittedResource(
-                            &heapProperties, heapFlags, &bufferDesc, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, &clearValue, IID_PPV_ARGS(&interpolationOutputs[i].resource))))
+                    if (FAILED(device->CreateCommittedResource(&heapProperties,
+                                                               heapFlags,
+                                                               &bufferDesc,
+                                                               D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
+                                                               &clearValue,
+                                                               IID_PPV_ARGS(&interpolationOutputs[i].resource))))
                     {
                         hr |= E_FAIL;
                     }
@@ -684,29 +676,26 @@ bool FrameInterpolationSwapChainDX12::verifyBackbufferDuplicateResources()
     return SUCCEEDED(hr);
 }
 
-HRESULT FrameInterpolationSwapChainDX12::init(HWND                                  hWnd,
-                                              const DXGI_SWAP_CHAIN_DESC1*          desc,
-                                              const DXGI_SWAP_CHAIN_FULLSCREEN_DESC* fullscreenDesc,
-                                              ID3D12CommandQueue* queue,
-                                              IDXGIFactory2* dxgiFactory)
+HRESULT FrameInterpolationSwapChainDX12::init(
+    HWND hWnd, const DXGI_SWAP_CHAIN_DESC1* desc, const DXGI_SWAP_CHAIN_FULLSCREEN_DESC* fullscreenDesc, ID3D12CommandQueue* queue, IDXGIFactory2* dxgiFactory)
 {
     FFX_ASSERT(desc);
     FFX_ASSERT(queue);
     FFX_ASSERT(dxgiFactory);
 
     // store values we modify, to return when application asks for info
-    gameBufferCount    = desc->BufferCount;
-    gameFlags          = desc->Flags;
-    gameSwapEffect     = desc->SwapEffect;
+    gameBufferCount = desc->BufferCount;
+    gameFlags       = desc->Flags;
+    gameSwapEffect  = desc->SwapEffect;
 
     // set default ui composition / frame interpolation present function
-    presentCallback    = ffxFrameInterpolationUiComposition;
+    presentCallback = ffxFrameInterpolationUiComposition;
 
     HRESULT hr = E_FAIL;
 
     if (SUCCEEDED(queue->GetDevice(IID_PPV_ARGS(&presentInfo.device))))
     {
-        presentInfo.gameQueue       = queue;
+        presentInfo.gameQueue = queue;
 
         InitializeCriticalSection(&criticalSection);
         InitializeCriticalSection(&criticalSectionUpdateConfig);
@@ -729,7 +718,7 @@ HRESULT FrameInterpolationSwapChainDX12::init(HWND                              
         IDXGISwapChain1* pSwapChain1 = nullptr;
 
         DXGI_SWAP_CHAIN_DESC1 realDesc = getInterpolationEnabledSwapChainDescription(desc);
-        hr = dxgiFactory->CreateSwapChainForHwnd(presentInfo.presentQueue, hWnd, &realDesc, fullscreenDesc, nullptr, &pSwapChain1);
+        hr                             = dxgiFactory->CreateSwapChainForHwnd(presentInfo.presentQueue, hWnd, &realDesc, fullscreenDesc, nullptr, &pSwapChain1);
         if (SUCCEEDED(hr) && queue)
         {
             if (SUCCEEDED(hr = pSwapChain1->QueryInterface(IID_PPV_ARGS(&presentInfo.swapChain))))
@@ -793,7 +782,6 @@ HRESULT FrameInterpolationSwapChainDX12::init(HWND                              
 
 FrameInterpolationSwapChainDX12::FrameInterpolationSwapChainDX12()
 {
-
 }
 
 FrameInterpolationSwapChainDX12::~FrameInterpolationSwapChainDX12()
@@ -806,7 +794,7 @@ UINT FrameInterpolationSwapChainDX12::getInterpolationEnabledSwapChainFlags(UINT
     UINT flags = nonAdjustedFlags;
 
     // The DXGI_SWAP_CHAIN_FLAG_FRAME_LATENCY_WAITABLE_OBJECT flag changes the D3D runtime behavior for fences
-    // We will make our own waitable object for the app to wait on, but we need to keep the flag 
+    // We will make our own waitable object for the app to wait on, but we need to keep the flag
     flags |= DXGI_SWAP_CHAIN_FLAG_FRAME_LATENCY_WAITABLE_OBJECT;
 
     if (tearingSupported)
@@ -824,7 +812,7 @@ DXGI_SWAP_CHAIN_DESC1 FrameInterpolationSwapChainDX12::getInterpolationEnabledSw
     // adjust swap chain descriptor to fit FI requirements
     fiDesc.SwapEffect  = DXGI_SWAP_EFFECT_FLIP_DISCARD;
     fiDesc.BufferCount = 3;
-    fiDesc.Flags = getInterpolationEnabledSwapChainFlags(fiDesc.Flags);
+    fiDesc.Flags       = getInterpolationEnabledSwapChainFlags(fiDesc.Flags);
 
     return fiDesc;
 }
@@ -840,7 +828,7 @@ HRESULT FrameInterpolationSwapChainDX12::shutdown()
     if (presentInfo.device)
     {
         destroyReplacementResources();
-        
+
         EnterCriticalSection(&criticalSection);
         killPresenterThread();
         releaseUiBlitGpuResources();
@@ -859,7 +847,7 @@ HRESULT FrameInterpolationSwapChainDX12::shutdown()
                 waitForFenceValue(presentInfo.interpolationFence, interpolationFenceValue, INFINITE, presentInfo.waitCallback);
             }
         }
-        
+
         SafeRelease(presentInfo.asyncComputeQueue);
         SafeRelease(presentInfo.presentQueue);
 
@@ -909,7 +897,7 @@ bool FrameInterpolationSwapChainDX12::spawnPresenterThread()
     {
         presentInfo.shutdown      = false;
         interpolationThreadHandle = CreateThread(nullptr, 0, interpolationThread, reinterpret_cast<void*>(&presentInfo), 0, nullptr);
-        
+
         FFX_ASSERT(interpolationThreadHandle != NULL);
 
         if (interpolationThreadHandle != 0)
@@ -927,7 +915,7 @@ bool FrameInterpolationSwapChainDX12::spawnPresenterThread()
 void FrameInterpolationSwapChainDX12::discardOutstandingInterpolationCommandLists()
 {
     // drop any outstanding interpolaton command lists
-    for (size_t i = 0; i < _countof(registeredInterpolationCommandLists); i++)
+    for (size_t i = 0; i < std::size(registeredInterpolationCommandLists); i++)
     {
         if (registeredInterpolationCommandLists[i] != nullptr)
         {
@@ -945,24 +933,21 @@ void FrameInterpolationSwapChainDX12::setFrameGenerationConfig(FfxFrameGeneratio
 
     // if config is a pointer to the internal config ::present called this function to apply the changes
     bool applyChangesNow = (config == &nextFrameGenerationConfig);
-        
+
     FfxPresentCallbackFunc inputPresentCallback    = (nullptr != config->presentCallback) ? config->presentCallback : ffxFrameInterpolationUiComposition;
     void*                  inputPresentCallbackCtx = (nullptr != config->presentCallback) ? config->presentCallbackContext : nullptr;
     ID3D12CommandQueue*    inputInterpolationQueue = config->allowAsyncWorkloads ? presentInfo.asyncComputeQueue : presentInfo.gameQueue;
 
     // if this is called externally just copy the new config to the internal copy to avoid potentially stalling on criticalSection
     if (!applyChangesNow)
-    {  
+    {
         nextFrameGenerationConfig = *config;
 
         // in case of actual reconfiguration: apply the changes immediately
-        if ( presentInfo.interpolationQueue != inputInterpolationQueue 
-           || interpolationEnabled != config->frameGenerationEnabled 
-           || presentCallback != inputPresentCallback
-           || presentCallbackContext != inputPresentCallbackCtx 
-           || frameGenerationCallback != config->frameGenerationCallback
-           || frameGenerationCallbackContext != config->frameGenerationCallbackContext
-           || drawDebugPacingLines != config->drawDebugPacingLines)
+        if (presentInfo.interpolationQueue != inputInterpolationQueue || interpolationEnabled != config->frameGenerationEnabled ||
+            presentCallback != inputPresentCallback || presentCallbackContext != inputPresentCallbackCtx ||
+            frameGenerationCallback != config->frameGenerationCallback || frameGenerationCallbackContext != config->frameGenerationCallbackContext ||
+            drawDebugPacingLines != config->drawDebugPacingLines)
         {
             applyChangesNow = true;
         }
@@ -1039,7 +1024,7 @@ bool FrameInterpolationSwapChainDX12::destroyReplacementResources()
     discardOutstandingInterpolationCommandLists();
 
     {
-        for (size_t i = 0; i < _countof(replacementSwapBuffers); i++)
+        for (size_t i = 0; i < std::size(replacementSwapBuffers); i++)
         {
             uint64_t resourceSize = GetResourceGpuMemorySize(replacementSwapBuffers[i].resource);
             totalUsageInBytes -= resourceSize;
@@ -1047,42 +1032,42 @@ bool FrameInterpolationSwapChainDX12::destroyReplacementResources()
         }
 
         SafeRelease(realBackBuffer0);
-        
-        for (size_t i = 0; i < _countof(interpolationOutputs); i++)
+
+        for (size_t i = 0; i < std::size(interpolationOutputs); i++)
         {
             uint64_t resourceSize = GetResourceGpuMemorySize(interpolationOutputs[i].resource);
             totalUsageInBytes -= resourceSize;
             interpolationOutputs[i].destroy();
         }
 
-        if (uiReplacementBuffer.resource !=nullptr)
+        if (uiReplacementBuffer.resource != nullptr)
         {
             uint64_t resourceSize = GetResourceGpuMemorySize(uiReplacementBuffer.resource);
             totalUsageInBytes -= resourceSize;
         }
-        
+
         uiReplacementBuffer.destroy();
     }
 
     // reset counters used in buffer management
-    framesSentForPresentation        = 0;
-    nextPresentWaitValue             = 0;
-    replacementSwapBufferIndex       = 0;
-    presentCount                     = 0;
-    interpolationFenceValue          = 0;
-    gameFenceValue                   = 0;
+    framesSentForPresentation  = 0;
+    nextPresentWaitValue       = 0;
+    replacementSwapBufferIndex = 0;
+    presentCount               = 0;
+    interpolationFenceValue    = 0;
+    gameFenceValue             = 0;
 
     // if we didn't init correctly, some parameters may not exist
     if (presentInfo.gameFence)
     {
         presentInfo.gameFence->Signal(gameFenceValue);
     }
-    
+
     if (presentInfo.interpolationFence)
     {
         presentInfo.interpolationFence->Signal(interpolationFenceValue);
     }
-    
+
     if (presentInfo.presentFence)
     {
         presentInfo.presentFence->Signal(framesSentForPresentation);
@@ -1138,19 +1123,16 @@ FfxResource FrameInterpolationSwapChainDX12::interpolationOutput(int index)
 //IUnknown
 HRESULT STDMETHODCALLTYPE FrameInterpolationSwapChainDX12::QueryInterface(REFIID riid, void** ppvObject)
 {
-
-    const GUID guidReplacements[] = {
-        __uuidof(this),
-        IID_IUnknown,
-        IID_IDXGIObject,
-        IID_IDXGIDeviceSubObject,
-        IID_IDXGISwapChain,
-        IID_IDXGISwapChain1,
-        IID_IDXGISwapChain2,
-        IID_IDXGISwapChain3,
-        IID_IDXGISwapChain4,
-        IID_IFfxFrameInterpolationSwapChain
-    };
+    const GUID guidReplacements[] = {__uuidof(this),
+                                     IID_IUnknown,
+                                     IID_IDXGIObject,
+                                     IID_IDXGIDeviceSubObject,
+                                     IID_IDXGISwapChain,
+                                     IID_IDXGISwapChain1,
+                                     IID_IDXGISwapChain2,
+                                     IID_IDXGISwapChain3,
+                                     IID_IDXGISwapChain4,
+                                     IID_IFfxFrameInterpolationSwapChain};
 
     for (auto guid : guidReplacements)
     {
@@ -1216,7 +1198,7 @@ void FrameInterpolationSwapChainDX12::registerUiResource(FfxResource uiResource,
 {
     EnterCriticalSection(&criticalSection);
 
-    presentInfo.currentUiSurface = uiResource;
+    presentInfo.currentUiSurface   = uiResource;
     presentInfo.uiCompositionFlags = flags;
     if (nullptr == uiResource.resource)
         presentInfo.uiCompositionFlags &= ~FFX_UI_COMPOSITION_FLAG_ENABLE_INTERNAL_UI_DOUBLE_BUFFERING;
@@ -1231,16 +1213,16 @@ void FrameInterpolationSwapChainDX12::setWaitCallback(FfxWaitCallbackFunc waitCa
 
 void FrameInterpolationSwapChainDX12::setFramePacingTuning(const FfxSwapchainFramePacingTuning* framePacingTuning)
 {
-    presentInfo.safetyMarginInSec = static_cast<double> (framePacingTuning->safetyMarginInMs) / 1000.0;
-    presentInfo.varianceFactor = static_cast<double> (framePacingTuning->varianceFactor);
-    presentInfo.allowHybridSpin = framePacingTuning->allowHybridSpin;
-    presentInfo.hybridSpinTime = framePacingTuning->hybridSpinTime;
+    presentInfo.safetyMarginInSec               = static_cast<double>(framePacingTuning->safetyMarginInMs) / 1000.0;
+    presentInfo.varianceFactor                  = static_cast<double>(framePacingTuning->varianceFactor);
+    presentInfo.allowHybridSpin                 = framePacingTuning->allowHybridSpin;
+    presentInfo.hybridSpinTime                  = framePacingTuning->hybridSpinTime;
     presentInfo.allowWaitForSingleObjectOnFence = framePacingTuning->allowWaitForSingleObjectOnFence;
 }
 
 void FrameInterpolationSwapChainDX12::GetGpuMemoryUsage(FfxEffectMemoryUsage* vramUsage)
 {
-    vramUsage->totalUsageInBytes = totalUsageInBytes;
+    vramUsage->totalUsageInBytes     = totalUsageInBytes;
     vramUsage->aliasableUsageInBytes = aliasableUsageInBytes;
 }
 
@@ -1276,18 +1258,18 @@ void FrameInterpolationSwapChainDX12::presentPassthrough(UINT SyncInterval, UINT
     barriers[1].Transition.pResource   = dx12ResourceDst;
     barriers[1].Transition.StateBefore = D3D12_RESOURCE_STATE_PRESENT;
     barriers[1].Transition.StateAfter  = D3D12_RESOURCE_STATE_COPY_DEST;
-    list->ResourceBarrier(_countof(barriers), barriers);
+    list->ResourceBarrier(std::size(barriers), barriers);
 
     list->CopyResource(dx12ResourceDst, dx12ResourceSrc);
 
-    for (size_t i = 0; i < _countof(barriers); ++i)
+    for (size_t i = 0; i < std::size(barriers); ++i)
     {
         D3D12_RESOURCE_STATES tmpStateBefore = barriers[i].Transition.StateBefore;
         barriers[i].Transition.StateBefore   = barriers[i].Transition.StateAfter;
         barriers[i].Transition.StateAfter    = tmpStateBefore;
     }
 
-    list->ResourceBarrier(_countof(barriers), barriers);
+    list->ResourceBarrier(std::size(barriers), barriers);
 
     passthroughList->execute(true);
 
@@ -1317,11 +1299,11 @@ void FrameInterpolationSwapChainDX12::presentWithUiComposition(UINT SyncInterval
     FfxResourceDescription inBufferDesc  = ffxGetResourceDescriptionDX12(replacementSwapBuffers[replacementSwapBufferIndex].resource);
 
     FfxPresentCallbackDescription desc{};
-    desc.commandList                = ffxGetCommandListDX12(list);
-    desc.device                     = presentInfo.device;
-    desc.isInterpolatedFrame        = false;
-    desc.outputSwapChainBuffer      = ffxGetResourceDX12(dx12SwapchainBuffer, outBufferDesc, nullptr, FFX_RESOURCE_STATE_PRESENT);
-    desc.currentBackBuffer          = ffxGetResourceDX12(replacementSwapBuffers[replacementSwapBufferIndex].resource, inBufferDesc, nullptr, FFX_RESOURCE_STATE_PRESENT);
+    desc.commandList           = ffxGetCommandListDX12(list);
+    desc.device                = presentInfo.device;
+    desc.isInterpolatedFrame   = false;
+    desc.outputSwapChainBuffer = ffxGetResourceDX12(dx12SwapchainBuffer, outBufferDesc, nullptr, FFX_RESOURCE_STATE_PRESENT);
+    desc.currentBackBuffer = ffxGetResourceDX12(replacementSwapBuffers[replacementSwapBufferIndex].resource, inBufferDesc, nullptr, FFX_RESOURCE_STATE_PRESENT);
     if (presentInfo.uiCompositionFlags & FFX_UI_COMPOSITION_FLAG_ENABLE_INTERNAL_UI_DOUBLE_BUFFERING)
     {
         FfxResourceDescription uiBufferDesc = ffxGetResourceDescriptionDX12(uiReplacementBuffer.resource);
@@ -1331,8 +1313,8 @@ void FrameInterpolationSwapChainDX12::presentWithUiComposition(UINT SyncInterval
     {
         desc.currentUI = presentInfo.currentUiSurface;
     }
-    desc.usePremulAlpha             = (presentInfo.uiCompositionFlags & FFX_UI_COMPOSITION_FLAG_USE_PREMUL_ALPHA) != 0;
-    desc.frameID                    = currentFrameID;
+    desc.usePremulAlpha = (presentInfo.uiCompositionFlags & FFX_UI_COMPOSITION_FLAG_USE_PREMUL_ALPHA) != 0;
+    desc.frameID        = currentFrameID;
 
     presentCallback(&desc, presentCallbackContext);
 
@@ -1355,11 +1337,11 @@ void FrameInterpolationSwapChainDX12::dispatchInterpolationCommands(FfxResource*
 {
     FFX_ASSERT(pInterpolatedFrame);
     FFX_ASSERT(pRealFrame);
-    
-    const UINT             currentBackBufferIndex   = GetCurrentBackBufferIndex();
-    ID3D12Resource*        pCurrentBackBuffer       = replacementSwapBuffers[currentBackBufferIndex].resource;
-    FfxResourceDescription gameFrameDesc            = ffxGetResourceDescriptionDX12(pCurrentBackBuffer);
-    FfxResource backbuffer                          = ffxGetResourceDX12(replacementSwapBuffers[currentBackBufferIndex].resource, gameFrameDesc, nullptr, FFX_RESOURCE_STATE_PRESENT);
+
+    const UINT             currentBackBufferIndex = GetCurrentBackBufferIndex();
+    ID3D12Resource*        pCurrentBackBuffer     = replacementSwapBuffers[currentBackBufferIndex].resource;
+    FfxResourceDescription gameFrameDesc          = ffxGetResourceDescriptionDX12(pCurrentBackBuffer);
+    FfxResource backbuffer = ffxGetResourceDX12(replacementSwapBuffers[currentBackBufferIndex].resource, gameFrameDesc, nullptr, FFX_RESOURCE_STATE_PRESENT);
 
     *pRealFrame = backbuffer;
 
@@ -1373,24 +1355,25 @@ void FrameInterpolationSwapChainDX12::dispatchInterpolationCommands(FfxResource*
 
         presentInfo.interpolationQueue->Signal(presentInfo.interpolationFence, ++interpolationFenceValue);
 
-        *pInterpolatedFrame = interpolationOutput();
+        *pInterpolatedFrame              = interpolationOutput();
         frameInterpolationResetCondition = false;
     }
-    else {
+    else
+    {
         Dx12Commands* interpolationCommandList = presentInfo.commandPool.get(presentInfo.interpolationQueue, L"getInterpolationCommandList()");
-        auto dx12CommandList = interpolationCommandList->reset();
+        auto          dx12CommandList          = interpolationCommandList->reset();
 
         FfxFrameGenerationDispatchDescription desc{};
-        desc.commandList = dx12CommandList;
-        desc.outputs[0] = interpolationOutput();
-        desc.presentColor = backbuffer;
-        desc.reset = frameInterpolationResetCondition;
-        desc.numInterpolatedFrames = 1;
+        desc.commandList                = dx12CommandList;
+        desc.outputs[0]                 = interpolationOutput();
+        desc.presentColor               = backbuffer;
+        desc.reset                      = frameInterpolationResetCondition;
+        desc.numInterpolatedFrames      = 1;
         desc.backBufferTransferFunction = static_cast<FfxBackbufferTransferFunction>(backBufferTransferFunction);
-        desc.minMaxLuminance[0] = minLuminance;
-        desc.minMaxLuminance[1] = maxLuminance;
-        desc.interpolationRect  = interpolationRect;
-        desc.frameID            = currentFrameID;
+        desc.minMaxLuminance[0]         = minLuminance;
+        desc.minMaxLuminance[1]         = maxLuminance;
+        desc.interpolationRect          = interpolationRect;
+        desc.frameID                    = currentFrameID;
 
         if (frameGenerationCallback(&desc, frameGenerationCallbackContext) == FFX_OK)
         {
@@ -1407,7 +1390,7 @@ void FrameInterpolationSwapChainDX12::dispatchInterpolationCommands(FfxResource*
         if (desc.numInterpolatedFrames > 0)
         {
             frameInterpolationResetCondition = false;
-            *pInterpolatedFrame = interpolationOutput();
+            *pInterpolatedFrame              = interpolationOutput();
         }
     }
 }
@@ -1426,9 +1409,9 @@ void FrameInterpolationSwapChainDX12::presentInterpolated(UINT SyncInterval, UIN
     EnterCriticalSection(&presentInfo.criticalSectionScheduledFrame);
 
     PacingData entry{};
-    entry.presentCallback                   = presentCallback;
-    entry.presentCallbackContext            = presentCallbackContext;
-    entry.drawDebugPacingLines              = drawDebugPacingLines;
+    entry.presentCallback        = presentCallback;
+    entry.presentCallbackContext = presentCallbackContext;
+    entry.drawDebugPacingLines   = drawDebugPacingLines;
 
     if (presentInfo.uiCompositionFlags & FFX_UI_COMPOSITION_FLAG_ENABLE_INTERNAL_UI_DOUBLE_BUFFERING)
     {
@@ -1439,12 +1422,12 @@ void FrameInterpolationSwapChainDX12::presentInterpolated(UINT SyncInterval, UIN
     {
         entry.uiSurface = presentInfo.currentUiSurface;
     }
-    entry.vsync                             = bVsync;
-    entry.tearingSupported                  = tearingSupported;
-    entry.numFramesSentForPresentationBase  = framesSentForPresentation;
-    entry.interpolationCompletedFenceValue  = interpolationFenceValue;
-    entry.usePremulAlphaComposite           = (presentInfo.uiCompositionFlags & FFX_UI_COMPOSITION_FLAG_USE_PREMUL_ALPHA) != 0;
-    entry.currentFrameID                    = currentFrameID;
+    entry.vsync                            = bVsync;
+    entry.tearingSupported                 = tearingSupported;
+    entry.numFramesSentForPresentationBase = framesSentForPresentation;
+    entry.interpolationCompletedFenceValue = interpolationFenceValue;
+    entry.usePremulAlphaComposite          = (presentInfo.uiCompositionFlags & FFX_UI_COMPOSITION_FLAG_USE_PREMUL_ALPHA) != 0;
+    entry.currentFrameID                   = currentFrameID;
 
     // interpolated
     PacingData::FrameInfo& fiInterpolated = entry.frames[PacingData::FrameType::Interpolated_1];
@@ -1468,8 +1451,8 @@ void FrameInterpolationSwapChainDX12::presentInterpolated(UINT SyncInterval, UIN
         }
     }
 
-    entry.replacementBufferFenceSignal  = framesSentForPresentation;
-    entry.numFramesToPresent            = UINT32(framesSentForPresentation - entry.numFramesSentForPresentationBase);
+    entry.replacementBufferFenceSignal = framesSentForPresentation;
+    entry.numFramesToPresent           = UINT32(framesSentForPresentation - entry.numFramesSentForPresentationBase);
 
     interpolationOutputs[interpolationBufferIndex].availabilityFenceValue = entry.numFramesSentForPresentationBase + fiInterpolated.doPresent;
 
@@ -1482,10 +1465,9 @@ void FrameInterpolationSwapChainDX12::presentInterpolated(UINT SyncInterval, UIN
 
     // hold the replacement object back until previous frame or interpolated is presented
     nextPresentWaitValue = entry.numFramesSentForPresentationBase;
-    
+
     UINT64 frameLatencyObjectWaitValue = (entry.numFramesSentForPresentationBase - 1) * (entry.numFramesSentForPresentationBase > 0);
     FFX_ASSERT(SUCCEEDED(presentInfo.presentFence->SetEventOnCompletion(frameLatencyObjectWaitValue, replacementFrameLatencyWaitableObjectHandle)));
-
 }
 
 bool FrameInterpolationSwapChainDX12::verifyUiDuplicateResource()
@@ -1525,7 +1507,6 @@ bool FrameInterpolationSwapChainDX12::verifyUiDuplicateResource()
         {
             if (SUCCEEDED(uiResource->GetDevice(IID_PPV_ARGS(&device))))
             {
-
                 D3D12_HEAP_PROPERTIES heapProperties{};
                 D3D12_HEAP_FLAGS      heapFlags;
                 uiResource->GetHeapProperties(&heapProperties, &heapFlags);
@@ -1588,28 +1569,27 @@ void FrameInterpolationSwapChainDX12::copyUiResource()
     barriers[1].Transition.pResource   = dx12ResourceDst;
     barriers[1].Transition.StateBefore = ffxGetDX12StateFromResourceState(presentInfo.currentUiSurface.state);
     barriers[1].Transition.StateAfter  = D3D12_RESOURCE_STATE_COPY_DEST;
-    dx12List->ResourceBarrier(_countof(barriers), barriers);
+    dx12List->ResourceBarrier(std::size(barriers), barriers);
 
     dx12List->CopyResource(dx12ResourceDst, dx12ResourceSrc);
 
-    for (size_t i = 0; i < _countof(barriers); ++i)
+    for (size_t i = 0; i < std::size(barriers); ++i)
     {
         D3D12_RESOURCE_STATES tmpStateBefore = barriers[i].Transition.StateBefore;
         barriers[i].Transition.StateBefore   = barriers[i].Transition.StateAfter;
         barriers[i].Transition.StateAfter    = tmpStateBefore;
     }
 
-    dx12List->ResourceBarrier(_countof(barriers), barriers);
+    dx12List->ResourceBarrier(std::size(barriers), barriers);
 
     copyList->execute(true);
 
     presentInfo.currentUiSurface.resource = nullptr;
 }
 
-    // IDXGISwapChain1
+// IDXGISwapChain1
 HRESULT STDMETHODCALLTYPE FrameInterpolationSwapChainDX12::Present(UINT SyncInterval, UINT Flags)
 {
-
     const UINT64 previousFramesSentForPresentation = framesSentForPresentation;
 
     if (Flags & DXGI_PRESENT_TEST)
@@ -1635,7 +1615,8 @@ HRESULT STDMETHODCALLTYPE FrameInterpolationSwapChainDX12::Present(UINT SyncInte
     // Verify integrity of internal Ui resource
     if (verifyUiDuplicateResource())
     {
-        if ((presentInfo.uiCompositionFlags & FFX_UI_COMPOSITION_FLAG_ENABLE_INTERNAL_UI_DOUBLE_BUFFERING) && (presentInfo.currentUiSurface.resource != nullptr))
+        if ((presentInfo.uiCompositionFlags & FFX_UI_COMPOSITION_FLAG_ENABLE_INTERNAL_UI_DOUBLE_BUFFERING) &&
+            (presentInfo.currentUiSurface.resource != nullptr))
         {
             copyUiResource();
         }
@@ -1673,14 +1654,15 @@ HRESULT STDMETHODCALLTYPE FrameInterpolationSwapChainDX12::Present(UINT SyncInte
     // Unregister any potential command list
     registeredInterpolationCommandLists[currentBackBufferIndex] = nullptr;
     presentCount++;
-    interpolationBufferIndex                                                   = presentCount % _countof(interpolationOutputs);
+    interpolationBufferIndex = presentCount % std::size(interpolationOutputs);
 
     //update active backbuffer and block when no buffer is available
     replacementSwapBufferIndex = presentCount % gameBufferCount;
 
     LeaveCriticalSection(&criticalSection);
 
-    waitForFenceValue(presentInfo.replacementBufferFence, replacementSwapBuffers[replacementSwapBufferIndex].availabilityFenceValue, INFINITE, presentInfo.waitCallback);
+    waitForFenceValue(
+        presentInfo.replacementBufferFence, replacementSwapBuffers[replacementSwapBufferIndex].availabilityFenceValue, INFINITE, presentInfo.waitCallback);
 
     return S_OK;
 }
@@ -1727,9 +1709,9 @@ HRESULT STDMETHODCALLTYPE FrameInterpolationSwapChainDX12::GetDesc(DXGI_SWAP_CHA
     if (SUCCEEDED(hr))
     {
         //update values we changed
-        pDesc->BufferCount  = gameBufferCount;
-        pDesc->Flags        = gameFlags;
-        pDesc->SwapEffect   = gameSwapEffect;
+        pDesc->BufferCount = gameBufferCount;
+        pDesc->Flags       = gameFlags;
+        pDesc->SwapEffect  = gameSwapEffect;
     }
 
     return hr;
@@ -1749,7 +1731,7 @@ HRESULT STDMETHODCALLTYPE FrameInterpolationSwapChainDX12::ResizeBuffers(UINT Bu
         FFX_ASSERT(BufferCount <= FFX_FRAME_INTERPOLATION_SWAP_CHAIN_MAX_BUFFER_COUNT);
         gameBufferCount = BufferCount;
     }
-    gameFlags       = SwapChainFlags;
+    gameFlags = SwapChainFlags;
 
     HRESULT hr = real()->ResizeBuffers(0 /* preserve count */, Width, Height, NewFormat, fiAdjustedFlags);
 
@@ -1772,7 +1754,7 @@ HRESULT STDMETHODCALLTYPE FrameInterpolationSwapChainDX12::GetContainingOutput(I
         *ppOutput = getMostRelevantOutputFromSwapChain(real());
         hr        = S_OK;
     }
-    
+
     return hr;
 }
 
@@ -1795,9 +1777,9 @@ HRESULT STDMETHODCALLTYPE FrameInterpolationSwapChainDX12::GetDesc1(DXGI_SWAP_CH
     if (SUCCEEDED(hr))
     {
         //update values we changed
-        pDesc->BufferCount  = gameBufferCount;
-        pDesc->Flags        = gameFlags;
-        pDesc->SwapEffect   = gameSwapEffect;
+        pDesc->BufferCount = gameBufferCount;
+        pDesc->Flags       = gameFlags;
+        pDesc->SwapEffect  = gameSwapEffect;
     }
 
     return hr;
@@ -1934,8 +1916,7 @@ HRESULT STDMETHODCALLTYPE FrameInterpolationSwapChainDX12::SetColorSpace1(DXGI_C
     return real()->SetColorSpace1(ColorSpace);
 }
 
-HRESULT STDMETHODCALLTYPE FrameInterpolationSwapChainDX12::ResizeBuffers1(
-    UINT, UINT, UINT, DXGI_FORMAT, UINT, const UINT*, IUnknown* const*)
+HRESULT STDMETHODCALLTYPE FrameInterpolationSwapChainDX12::ResizeBuffers1(UINT, UINT, UINT, DXGI_FORMAT, UINT, const UINT*, IUnknown* const*)
 {
     FFX_ASSERT_MESSAGE(false, "AMD FSR Frame interpolaton proxy swapchain: ResizeBuffers1 currently not supported.");
 
@@ -1979,8 +1960,9 @@ ID3D12GraphicsCommandList* FrameInterpolationSwapChainDX12::getInterpolationComm
     ID3D12GraphicsCommandList* dx12CommandList = nullptr;
 
     // store active backbuffer index to the command list, used to verify list usage later
-    if (interpolationEnabled) {
-        ID3D12Resource* currentBackBuffer = nullptr;
+    if (interpolationEnabled)
+    {
+        ID3D12Resource* currentBackBuffer      = nullptr;
         const UINT      currentBackBufferIndex = GetCurrentBackBufferIndex();
         if (SUCCEEDED(GetBuffer(currentBackBufferIndex, IID_PPV_ARGS(&currentBackBuffer))))
         {
@@ -2003,7 +1985,7 @@ ID3D12GraphicsCommandList* FrameInterpolationSwapChainDX12::getInterpolationComm
             SafeRelease(currentBackBuffer);
         }
     }
-    
+
     LeaveCriticalSection(&criticalSection);
 
     return dx12CommandList;

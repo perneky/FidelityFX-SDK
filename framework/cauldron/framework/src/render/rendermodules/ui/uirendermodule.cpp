@@ -1,7 +1,7 @@
 // This file is part of the FidelityFX SDK.
 //
 // Copyright (C) 2024 Advanced Micro Devices, Inc.
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files(the "Software"), to deal
 // in the Software without restriction, including without limitation the rights
@@ -47,26 +47,18 @@ namespace cauldron
         // Register UI elements for magnifier
         static constexpr float s_MAGNIFICATION_AMOUNT_MIN = 1.0f;
         static constexpr float s_MAGNIFICATION_AMOUNT_MAX = 32.0f;
-        static constexpr float s_MAGNIFIER_RADIUS_MIN = 0.01f;
-        static constexpr float s_MAGNIFIER_RADIUS_MAX = 0.85f;
+        static constexpr float s_MAGNIFIER_RADIUS_MIN     = 0.01f;
+        static constexpr float s_MAGNIFIER_RADIUS_MAX     = 0.85f;
 
         UISection* uiSection = GetUIManager()->RegisterUIElements("Magnifier");
         if (uiSection)
         {
-            m_MagnifierEnabledPtr = uiSection->RegisterUIElement<UICheckBox>("Show Magnifier (M or Middle Mouse Button)", m_MagnifierEnabled);
+            m_MagnifierEnabledPtr      = uiSection->RegisterUIElement<UICheckBox>("Show Magnifier (M or Middle Mouse Button)", m_MagnifierEnabled);
             m_LockMagnifierPositionPtr = uiSection->RegisterUIElement<UICheckBox>("Lock Position (L)", m_LockMagnifierPosition, m_MagnifierEnabled);
             uiSection->RegisterUIElement<UISlider<float>>(
-                "Screen Size",
-                m_MagnifierCBData.MagnifierScreenRadius,
-                s_MAGNIFIER_RADIUS_MIN,
-                s_MAGNIFIER_RADIUS_MAX,
-                m_MagnifierEnabled);
+                "Screen Size", m_MagnifierCBData.MagnifierScreenRadius, s_MAGNIFIER_RADIUS_MIN, s_MAGNIFIER_RADIUS_MAX, m_MagnifierEnabled);
             uiSection->RegisterUIElement<UISlider<float>>(
-                "Magnification",
-                m_MagnifierCBData.MagnificationAmount,
-                s_MAGNIFICATION_AMOUNT_MIN,
-                s_MAGNIFICATION_AMOUNT_MAX,
-                m_MagnifierEnabled);
+                "Magnification", m_MagnifierCBData.MagnificationAmount, s_MAGNIFICATION_AMOUNT_MIN, s_MAGNIFICATION_AMOUNT_MAX, m_MagnifierEnabled);
         }
 
         //////////////////////////////////////////////////////////////////////////
@@ -132,7 +124,7 @@ namespace cauldron
         //////////////////////////////////////////////////////////////////////////
         // Create sampler - both magnifier and UI can use a point sampler
         SamplerDesc samplerDesc;
-        samplerDesc.Filter = FilterFunc::MinMagMipPoint;
+        samplerDesc.Filter   = FilterFunc::MinMagMipPoint;
         samplerDesc.AddressU = AddressMode::Border;
         samplerDesc.AddressV = AddressMode::Border;
         samplerDesc.AddressW = AddressMode::Border;
@@ -153,8 +145,8 @@ namespace cauldron
 
         // Magnifier
         RootSignatureDesc magSignatureDesc;
-        magSignatureDesc.AddConstantBufferView(0, ShaderBindStage::Compute, 1); // Upscaler
-        magSignatureDesc.AddConstantBufferView(1, ShaderBindStage::Compute, 1); // MagnifierCB
+        magSignatureDesc.AddConstantBufferView(0, ShaderBindStage::Compute, 1);  // Upscaler
+        magSignatureDesc.AddConstantBufferView(1, ShaderBindStage::Compute, 1);  // MagnifierCB
         magSignatureDesc.AddTextureSRVSet(0, ShaderBindStage::Compute, 1);       // ColorTarget
         magSignatureDesc.AddTextureUAVSet(0, ShaderBindStage::Compute, 1);       // ColorTargetTemp
 
@@ -335,20 +327,20 @@ namespace cauldron
         GetFramework()->GetUpscaledRenderInfo(rtWidth, rtHeight, widthScale, heightScale);
         UpscalerInformation upscaleConst = {Vec4((float)rtWidth, (float)rtHeight, widthScale, heightScale)};
 
-
         // Check if enabled
         if (m_MagnifierEnabled)
         {
             // Setup constant buffer data and update magnifier to stay centered on screen
             UpdateMagnifierParams();
-            BufferAddressInfo bufferInfo = GetDynamicBufferPool()->AllocConstantBuffer(sizeof(MagnifierCBData), &m_MagnifierCBData);
+            BufferAddressInfo bufferInfo  = GetDynamicBufferPool()->AllocConstantBuffer(sizeof(MagnifierCBData), &m_MagnifierCBData);
             BufferAddressInfo upscaleInfo = GetDynamicBufferPool()->AllocConstantBuffer(sizeof(UpscalerInformation), &upscaleConst);
 
             // Render modules expect resources coming in/going out to be in a shader read state
             {
                 Barrier barrier;
-                barrier = Barrier::Transition(
-                    m_pRenderTargetTemp->GetResource(), ResourceState::NonPixelShaderResource | ResourceState::PixelShaderResource, ResourceState::UnorderedAccess);
+                barrier = Barrier::Transition(m_pRenderTargetTemp->GetResource(),
+                                              ResourceState::NonPixelShaderResource | ResourceState::PixelShaderResource,
+                                              ResourceState::UnorderedAccess);
                 ResourceBarrier(pCmdList, 1, &barrier);
             }
 
@@ -386,9 +378,8 @@ namespace cauldron
             {
                 {
                     Barrier barrier;
-                    barrier = Barrier::Transition(m_pRenderTarget->GetResource(),
-                                                  ResourceState::CopyDest,
-                                                  ResourceState::NonPixelShaderResource | ResourceState::PixelShaderResource);
+                    barrier = Barrier::Transition(
+                        m_pRenderTarget->GetResource(), ResourceState::CopyDest, ResourceState::NonPixelShaderResource | ResourceState::PixelShaderResource);
                     ResourceBarrier(pCmdList, 1, &barrier);
                 }
             }
@@ -479,7 +470,8 @@ namespace cauldron
             }
             else
             {
-                const cauldron::GPUResource* rt = m_bRenderToTexture ? m_pUiOnlyRenderTarget[m_curUiTextureIndex]->GetResource() : m_pRenderTarget->GetResource();
+                const cauldron::GPUResource* rt =
+                    m_bRenderToTexture ? m_pUiOnlyRenderTarget[m_curUiTextureIndex]->GetResource() : m_pRenderTarget->GetResource();
                 ResourceState prevState = rt->GetCurrentResourceState();
                 Barrier       rtBarrier = Barrier::Transition(rt, prevState, ResourceState::RenderTargetResource);
                 ResourceBarrier(pCmdList, 1, &rtBarrier);
@@ -503,7 +495,7 @@ namespace cauldron
                     Barrier rtBarrier = Barrier::Transition(m_pRenderTarget->GetResource(), ResourceState::CopyDest, ResourceState::ShaderResource);
                     ResourceBarrier(pCmdList, 1, &rtBarrier);
                 }
-            } 
+            }
         }
     }
 
@@ -619,10 +611,10 @@ namespace cauldron
         else
         {
             const InputState& inputState = GetInputManager()->GetInputState();
-            m_MagnifierCBData.MousePosX = static_cast<int32_t>(inputState.Mouse.AxisState[Mouse_XAxis]);
-            m_MagnifierCBData.MousePosY = static_cast<int32_t>(inputState.Mouse.AxisState[Mouse_YAxis]);
-            m_LockedMagnifierPositionX = m_MagnifierCBData.MousePosX;
-            m_LockedMagnifierPositionY = m_MagnifierCBData.MousePosY;
+            m_MagnifierCBData.MousePosX  = static_cast<int32_t>(inputState.Mouse.AxisState[Mouse_XAxis]);
+            m_MagnifierCBData.MousePosY  = static_cast<int32_t>(inputState.Mouse.AxisState[Mouse_YAxis]);
+            m_LockedMagnifierPositionX   = m_MagnifierCBData.MousePosX;
+            m_LockedMagnifierPositionY   = m_MagnifierCBData.MousePosY;
         }
 
         // UI RM always uses display resolution
@@ -631,32 +623,34 @@ namespace cauldron
         m_MagnifierCBData.ImageHeight    = resInfo.DisplayHeight;
         m_MagnifierCBData.BorderColorRGB = m_LockMagnifierPosition ? Vec4(0.72f, 0.002f, 0.0f, 1.f) : Vec4(0.002f, 0.72f, 0.0f, 1.f);
 
-        const int32_t imageSize[2] = { static_cast<int>(m_MagnifierCBData.ImageWidth), static_cast<int>(m_MagnifierCBData.ImageHeight) };
-        const int32_t& width = imageSize[0];
-        const int32_t& height = imageSize[1];
+        const int32_t  imageSize[2] = {static_cast<int>(m_MagnifierCBData.ImageWidth), static_cast<int>(m_MagnifierCBData.ImageHeight)};
+        const int32_t& width        = imageSize[0];
+        const int32_t& height       = imageSize[1];
 
-        const int32_t radiusInPixelsMagifier = static_cast<int>(m_MagnifierCBData.MagnifierScreenRadius * height);
+        const int32_t radiusInPixelsMagifier     = static_cast<int>(m_MagnifierCBData.MagnifierScreenRadius * height);
         const int32_t radiusInPixelsMagifiedArea = static_cast<int>(m_MagnifierCBData.MagnifierScreenRadius * height / m_MagnifierCBData.MagnificationAmount);
 
-        const bool bCirclesAreOverlapping = radiusInPixelsMagifiedArea + radiusInPixelsMagifier > std::sqrt(m_MagnifierCBData.MagnifierOffsetX * m_MagnifierCBData.MagnifierOffsetX + m_MagnifierCBData.MagnifierOffsetY * m_MagnifierCBData.MagnifierOffsetY);
+        const bool bCirclesAreOverlapping =
+            radiusInPixelsMagifiedArea + radiusInPixelsMagifier > std::sqrt(m_MagnifierCBData.MagnifierOffsetX * m_MagnifierCBData.MagnifierOffsetX +
+                                                                            m_MagnifierCBData.MagnifierOffsetY * m_MagnifierCBData.MagnifierOffsetY);
 
-        if (bCirclesAreOverlapping) // Don't let the two circles overlap
+        if (bCirclesAreOverlapping)  // Don't let the two circles overlap
         {
             m_MagnifierCBData.MagnifierOffsetX = radiusInPixelsMagifiedArea + radiusInPixelsMagifier + 1;
             m_MagnifierCBData.MagnifierOffsetY = radiusInPixelsMagifiedArea + radiusInPixelsMagifier + 1;
         }
 
         // Try to move the magnified area to be fully on screen, if possible
-        const int32_t* pMousePos[2] = { &m_MagnifierCBData.MousePosX, &m_MagnifierCBData.MousePosY };
-        int32_t* pMagnifierOffset[2] = { &m_MagnifierCBData.MagnifierOffsetX, &m_MagnifierCBData.MagnifierOffsetY };
+        const int32_t* pMousePos[2]        = {&m_MagnifierCBData.MousePosX, &m_MagnifierCBData.MousePosY};
+        int32_t*       pMagnifierOffset[2] = {&m_MagnifierCBData.MagnifierOffsetX, &m_MagnifierCBData.MagnifierOffsetY};
         for (int32_t i = 0; i < 2; ++i)
         {
             const bool bMagnifierOutOfScreenRegion = *pMousePos[i] + *pMagnifierOffset[i] + radiusInPixelsMagifier > imageSize[i] ||
-                *pMousePos[i] + *pMagnifierOffset[i] - radiusInPixelsMagifier < 0;
+                                                     *pMousePos[i] + *pMagnifierOffset[i] - radiusInPixelsMagifier < 0;
             if (bMagnifierOutOfScreenRegion)
             {
-                if (!(*pMousePos[i] - *pMagnifierOffset[i] + radiusInPixelsMagifier > imageSize[i]
-                    || *pMousePos[i] - *pMagnifierOffset[i] - radiusInPixelsMagifier < 0))
+                if (!(*pMousePos[i] - *pMagnifierOffset[i] + radiusInPixelsMagifier > imageSize[i] ||
+                      *pMousePos[i] - *pMagnifierOffset[i] - radiusInPixelsMagifier < 0))
                 {
                     // Flip offset if possible
                     *pMagnifierOffset[i] = -*pMagnifierOffset[i];
@@ -681,9 +675,9 @@ namespace cauldron
         // Render modules expect resources coming in/going out to be in a shader read state
         ResourceState state0     = m_pRenderTarget->GetResource()->GetCurrentResourceState();
         ResourceState state1     = m_pHudLessRenderTarget[m_curUiTextureIndex]->GetResource()->GetCurrentResourceState();
-        Barrier       barriers[] = {Barrier::Transition(m_pRenderTarget->GetResource(), state0, ResourceState::PixelShaderResource), 
+        Barrier       barriers[] = {Barrier::Transition(m_pRenderTarget->GetResource(), state0, ResourceState::PixelShaderResource),
                                     Barrier::Transition(m_pHudLessRenderTarget[m_curUiTextureIndex]->GetResource(), state1, ResourceState::RenderTargetResource)};
-        ResourceBarrier(pCmdList, _countof(barriers), barriers);
+        ResourceBarrier(pCmdList, std::size(barriers), barriers);
 
         BeginRaster(pCmdList, 1, &m_pHudLessRasterView[m_curUiTextureIndex]);
 
@@ -705,9 +699,9 @@ namespace cauldron
         EndRaster(pCmdList);
 
         // Revert resource states
-        for (int i = 0; i < _countof(barriers); ++i)
+        for (int i = 0; i < std::size(barriers); ++i)
             std::swap(barriers[i].SourceState, barriers[i].DestState);
-        ResourceBarrier(pCmdList, _countof(barriers), barriers);
+        ResourceBarrier(pCmdList, std::size(barriers), barriers);
     }
 
-} // namespace cauldron
+}  // namespace cauldron

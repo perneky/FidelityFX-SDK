@@ -1,7 +1,7 @@
 // This file is part of the FidelityFX SDK.
 //
 // Copyright (C) 2024 Advanced Micro Devices, Inc.
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files(the "Software"), to deal
 // in the Software without restriction, including without limitation the rights
@@ -27,6 +27,9 @@
 #include "FrameInterpolationSwapchainVK_DebugPacing.h"
 
 #include <FidelityFX/host/ffx_assert.h>
+
+#include <cstdio>
+#include <array>
 
 ///////////////////////////////////////////////////////////////////
 //                    MODES EXPLAINED
@@ -76,16 +79,18 @@
 /// Helper functions and classes
 //////////////////////////////////////////////
 
-#define EXIT_ON_VKRESULT_NOT_SUCCESS(res) if (res != VK_SUCCESS) return res;
+#define EXIT_ON_VKRESULT_NOT_SUCCESS(res) \
+    if (res != VK_SUCCESS)                \
+        return res;
 
 #define FFX_ASSERT_MESSAGE_FORMAT(test, ...)            \
     {                                                   \
         char msg[128];                                  \
         snprintf(msg, 128 * sizeof(char), __VA_ARGS__); \
         FFX_ASSERT_MESSAGE(test, msg);                  \
-    } \
+    }
 
-#define GET_DEVICE_PROC_ADDR(name)       name##Proc = (PFN_##name)vkGetDeviceProcAddr(device, #name);
+#define GET_DEVICE_PROC_ADDR(name) name##Proc = (PFN_##name)vkGetDeviceProcAddr(device, #name);
 
 #define HAS_FLAG(options, flags) (((options) & (flags)) == (flags))
 
@@ -97,7 +102,6 @@ struct ImageState
 };
 constexpr ImageState ReplacementBufferTransferState   = {VK_ACCESS_SHADER_READ_BIT, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL};
 constexpr ImageState InterpolationBufferTransferState = {VK_ACCESS_SHADER_WRITE_BIT, VK_IMAGE_LAYOUT_GENERAL};
-
 
 VkImageMemoryBarrier getImageMemoryBarrier(VkImage       image,
                                            VkAccessFlags srcAccessMask,
@@ -141,7 +145,7 @@ struct ImageBarrierHelper
         ++count;
     }
 
-    template<typename... T>
+    template <typename... T>
     void add(T... args)
     {
         add(getImageMemoryBarrier(args...));
@@ -195,7 +199,7 @@ void recordCopy(VkCommandBuffer commandBuffer, VkImage srcImage, VkImage dstImag
 /// Helper class to set the debug name
 struct DebugNameSetter
 {
-    VkDevice device;
+    VkDevice                         device;
     PFN_vkSetDebugUtilsObjectNameEXT vkSetDebugUtilsObjectNameEXTProc;
 
     DebugNameSetter(VkDevice dev)
@@ -227,7 +231,6 @@ struct DebugNameSetter
         return setDebugName(pObject, type, finalName);
     }
 };
-
 
 VkAccessFlags getVKAccessFlagsFromResourceState2(FfxResourceStates state)
 {
@@ -314,7 +317,8 @@ uint32_t findMemoryType(const VkPhysicalDeviceMemoryProperties& memProperties, u
     return 0u;
 };
 
-bool waitForSemaphoreValue(VkDevice device, VkSemaphore semaphore, uint64_t value, uint64_t nanoseconds = UINT64_MAX, FfxWaitCallbackFunc waitCallback = nullptr)
+bool waitForSemaphoreValue(
+    VkDevice device, VkSemaphore semaphore, uint64_t value, uint64_t nanoseconds = UINT64_MAX, FfxWaitCallbackFunc waitCallback = nullptr)
 {
     if (semaphore != VK_NULL_HANDLE)
     {
@@ -325,13 +329,13 @@ bool waitForSemaphoreValue(VkDevice device, VkSemaphore semaphore, uint64_t valu
         waitInfo.semaphoreCount      = 1;
         waitInfo.pSemaphores         = &semaphore;
         waitInfo.pValues             = &value;
-        VkResult res = VK_TIMEOUT;
+        VkResult res                 = VK_TIMEOUT;
         if (nanoseconds == UINT64_MAX)
         {
             if (waitCallback)
             {
-                uint64_t waitIntervalInNanoSeconds = 1000000; //1ms
-                res = vkWaitSemaphores(device, &waitInfo, waitIntervalInNanoSeconds);
+                uint64_t waitIntervalInNanoSeconds = 1000000;  //1ms
+                res                                = vkWaitSemaphores(device, &waitInfo, waitIntervalInNanoSeconds);
                 while (res == VK_TIMEOUT)
                 {
                     res = vkWaitSemaphores(device, &waitInfo, waitIntervalInNanoSeconds);
@@ -352,15 +356,6 @@ bool waitForSemaphoreValue(VkDevice device, VkSemaphore semaphore, uint64_t valu
     }
 
     return false;
-}
-
-inline void SafeCloseHandle(HANDLE& handle)
-{
-    if (handle)
-    {
-        CloseHandle(handle);
-        handle = NULL;
-    }
 }
 
 FrameInterpolationSwapChainVK* createFrameInterpolationSwapChain(const VkAllocationCallbacks* pAllocator)
@@ -487,7 +482,6 @@ void FrameInterpolationSwapChainVK::destroyImage(ReplacementResource& resource, 
     }
 }
 
-
 //////////////////////////////////////////////
 /// Vulkan API overridden functions
 //////////////////////////////////////////////
@@ -516,7 +510,7 @@ VkResult vkCreateSwapchainFFX(VkDevice                           device,
         return VK_ERROR_INITIALIZATION_FAILED;
 
     FrameInterpolationSwapChainVK* pSwapChainVK = createFrameInterpolationSwapChain(pAllocator);
-    VkResult result = pSwapChainVK->init(pCreateInfo, pFrameInterpolationInfo);
+    VkResult                       result       = pSwapChainVK->init(pCreateInfo, pFrameInterpolationInfo);
     if (result == VK_SUCCESS)
     {
         *pSwapchain = reinterpret_cast<VkSwapchainKHR>(pSwapChainVK);
@@ -526,7 +520,6 @@ VkResult vkCreateSwapchainFFX(VkDevice                           device,
         pSwapChainVK->destroySwapchain(device, pAllocator);
         deleteFrameInterpolationSwapChain(pSwapChainVK, pAllocator);
         pSwapChainVK = nullptr;
-
     }
     return result;
 }
@@ -659,14 +652,14 @@ FfxErrorCode ffxConfigureFrameInterpolationSwapchainVK(FfxSwapchain gameSwapChai
         FrameInterpolationSwapChainVK* pSwapChainVK = reinterpret_cast<FrameInterpolationSwapChainVK*>(gameSwapChain);
         switch (key)
         {
-            case FFX_FI_SWAPCHAIN_CONFIGURE_KEY_WAITCALLBACK:
-                pSwapChainVK->setWaitCallback(static_cast<FfxWaitCallbackFunc>(valuePtr));
+        case FFX_FI_SWAPCHAIN_CONFIGURE_KEY_WAITCALLBACK:
+            pSwapChainVK->setWaitCallback(reinterpret_cast<FfxWaitCallbackFunc>(valuePtr));
             break;
-            case FFX_FI_SWAPCHAIN_CONFIGURE_KEY_FRAMEPACINGTUNING:
-                if (valuePtr != nullptr)
-                {
-                    pSwapChainVK->setFramePacingTuning(static_cast<FfxSwapchainFramePacingTuning*>(valuePtr));
-                }
+        case FFX_FI_SWAPCHAIN_CONFIGURE_KEY_FRAMEPACINGTUNING:
+            if (valuePtr != nullptr)
+            {
+                pSwapChainVK->setFramePacingTuning(static_cast<FfxSwapchainFramePacingTuning*>(valuePtr));
+            }
             break;
             return FFX_OK;
         }
@@ -678,7 +671,7 @@ FfxErrorCode ffxConfigureFrameInterpolationSwapchainVK(FfxSwapchain gameSwapChai
 FfxResource ffxGetFrameinterpolationTextureVK(FfxSwapchain gameSwapChain)
 {
     FrameInterpolationSwapChainVK* pSwapChainVK = reinterpret_cast<FrameInterpolationSwapChainVK*>(gameSwapChain);
-    FfxResource res = pSwapChainVK->interpolationOutput(0);
+    FfxResource                    res          = pSwapChainVK->interpolationOutput(0);
     return res;
 }
 
@@ -703,7 +696,7 @@ FfxErrorCode ffxReplaceSwapchainForFrameinterpolationVK(FfxCommandQueue         
 
     if (frameInterpolationInfo == nullptr)
         return FFX_ERROR_INVALID_ARGUMENT;
-    
+
     FFX_ASSERT(frameInterpolationInfo->device != VK_NULL_HANDLE);
     FFX_ASSERT(frameInterpolationInfo->physicalDevice != VK_NULL_HANDLE);
     FFX_ASSERT(gameQueue != VK_NULL_HANDLE);
@@ -711,7 +704,7 @@ FfxErrorCode ffxReplaceSwapchainForFrameinterpolationVK(FfxCommandQueue         
 
     const VkAllocationCallbacks* pAllocator = frameInterpolationInfo->pAllocator;
     VkSwapchainCreateInfoKHR     createInfo = *swapchainCreateInfo;  // copy
-    
+
     // createInfo.oldSwapchain should be the same as gameSwapchain if not VK_NULL_HANDLE
     if (createInfo.oldSwapchain != VK_NULL_HANDLE && createInfo.oldSwapchain != gameSwapchain)
         return FFX_ERROR_INVALID_ARGUMENT;
@@ -726,7 +719,7 @@ FfxErrorCode ffxReplaceSwapchainForFrameinterpolationVK(FfxCommandQueue         
         pSwapChainVK->destroySwapchain(frameInterpolationInfo->device, pAllocator);
         deleteFrameInterpolationSwapChain(pSwapChainVK, pAllocator);
         pSwapChainVK = nullptr;
-        status = FFX_ERROR_BACKEND_API_ERROR;
+        status       = FFX_ERROR_BACKEND_API_ERROR;
     }
 
     // as per Vulkan documentation, oldSwapchain is retired - even if creation of the new swapchain fails.
@@ -754,7 +747,6 @@ FfxErrorCode ffxFrameInterpolationSwapchainGetGpuMemoryUsageVK(FfxSwapchain game
     pSwapChainVK->getGpuMemoryUsage(vramUsage);
 
     return FFX_OK;
-    
 }
 
 //////////////////////////////////////////////
@@ -772,9 +764,9 @@ VkResult presentToSwapChain(FrameinterpolationPresentInfo* pPresenter, uint32_t 
     presentInfoKHR.pImageIndices      = &imageIndex;
     presentInfoKHR.pResults           = nullptr;  // Optional
 
-    EnterCriticalSection(&pPresenter->swapchainCriticalSection);
+    pPresenter->swapchainCriticalSection.lock();
     VkResult res = vkQueuePresentKHR(pPresenter->presentQueue.queue, &presentInfoKHR);
-    LeaveCriticalSection(&pPresenter->swapchainCriticalSection);
+    pPresenter->swapchainCriticalSection.unlock();
 
     ++(pPresenter->realPresentCount);
     return res;
@@ -805,10 +797,10 @@ VkResult compositeSwapChainFrame(FrameinterpolationPresentInfo* pPresenter,
         desc.isInterpolatedFrame = frameType != PacingData::FrameType::Real;
         desc.outputSwapChainBuffer =
             ffxGetResourceVK(pPresenter->compositionOutput.image, pPresenter->compositionOutput.description, nullptr, FFX_RESOURCE_STATE_COPY_SRC);
-        desc.currentBackBuffer              = frameInfo.resource;
-        desc.currentUI                      = pPacingEntry->uiSurface;
-        desc.usePremulAlpha                 = pPacingEntry->usePremulAlphaComposite;
-        desc.frameID                        = pPacingEntry->currentFrameID;
+        desc.currentBackBuffer = frameInfo.resource;
+        desc.currentUI         = pPacingEntry->uiSurface;
+        desc.usePremulAlpha    = pPacingEntry->usePremulAlphaComposite;
+        desc.frameID           = pPacingEntry->currentFrameID;
 
         FfxDebugPacingContext debugPacingContext;
         debugPacingContext.physicalDevice = pPresenter->physicalDevice;
@@ -821,13 +813,13 @@ VkResult compositeSwapChainFrame(FrameinterpolationPresentInfo* pPresenter,
 
     if (pPacingEntry->presentCallback)
     {
-        auto compositeCommandList = pPresenter->commandPool.get(pPresenter->device, compositionQueue, "compositeCommandList");
+        auto            compositeCommandList   = pPresenter->commandPool.get(pPresenter->device, compositionQueue, "compositeCommandList");
         VkCommandBuffer compositeCommandBuffer = compositeCommandList->reset();
 
         FfxPresentCallbackDescription desc{};
-        desc.commandList           = ffxGetCommandListVK(compositeCommandBuffer);
-        desc.device                = pPresenter->device;
-        desc.isInterpolatedFrame   = frameType != PacingData::FrameType::Real;
+        desc.commandList         = ffxGetCommandListVK(compositeCommandBuffer);
+        desc.device              = pPresenter->device;
+        desc.isInterpolatedFrame = frameType != PacingData::FrameType::Real;
         if (pPresenter->compositionMode == FGSwapchainCompositionMode::eComposeOnPresentQueue)
         {
             desc.outputSwapChainBuffer = ffxGetResourceVK(
@@ -838,10 +830,10 @@ VkResult compositeSwapChainFrame(FrameinterpolationPresentInfo* pPresenter,
             desc.outputSwapChainBuffer =
                 ffxGetResourceVK(pPresenter->compositionOutput.image, pPresenter->compositionOutput.description, nullptr, FFX_RESOURCE_STATE_COPY_SRC);
         }
-        desc.currentBackBuffer     = frameInfo.resource;
-        desc.currentUI             = pPacingEntry->uiSurface;
-        desc.usePremulAlpha        = pPacingEntry->usePremulAlphaComposite;
-        desc.frameID               = pPacingEntry->currentFrameID;
+        desc.currentBackBuffer = frameInfo.resource;
+        desc.currentUI         = pPacingEntry->uiSurface;
+        desc.usePremulAlpha    = pPacingEntry->usePremulAlphaComposite;
+        desc.frameID           = pPacingEntry->currentFrameID;
 
         // queue family ownership transfer for interpolation output & UI surface
         ImageBarrierHelper preCallbackBarriers;
@@ -857,7 +849,6 @@ VkResult compositeSwapChainFrame(FrameinterpolationPresentInfo* pPresenter,
                                         InterpolationBufferTransferState.layout,
                                         pPresenter->interpolationQueue.familyIndex,
                                         compositionQueue.familyIndex);
-
             }
             else if (frameType == PacingData::FrameType::Real)
             {
@@ -935,7 +926,7 @@ VkResult compositeSwapChainFrame(FrameinterpolationPresentInfo* pPresenter,
     }
 }
 
-DWORD WINAPI copyAndPresent_presenterThread(LPVOID pParam)
+void* copyAndPresent_presenterThread(void* pParam)
 {
     FrameinterpolationPresentInfo* presenter = static_cast<FrameinterpolationPresentInfo*>(pParam);
 
@@ -946,16 +937,16 @@ DWORD WINAPI copyAndPresent_presenterThread(LPVOID pParam)
 
         while (!presenter->shutdown)
         {
-            WaitForSingleObject(presenter->pacerEvent, INFINITE);
+            posix_event_wait(&presenter->pacerEvent);
 
             if (!presenter->shutdown)
             {
-                EnterCriticalSection(&presenter->scheduledFrameCriticalSection);
+                presenter->scheduledFrameCriticalSection.lock();
 
                 PacingData entry = presenter->scheduledPresents;
                 presenter->scheduledPresents.invalidate();
 
-                LeaveCriticalSection(&presenter->scheduledFrameCriticalSection);
+                presenter->scheduledFrameCriticalSection.unlock();
 
                 if (entry.numFramesToPresent > 0)
                 {
@@ -975,12 +966,14 @@ DWORD WINAPI copyAndPresent_presenterThread(LPVOID pParam)
                             uint32_t    imageIndex              = 0;
                             VkSemaphore imageAvailableSemaphore = VK_NULL_HANDLE;
                             VkResult    res                     = presenter->acquireNextRealImage(imageIndex, imageAvailableSemaphore);
-                            FFX_ASSERT_MESSAGE_FORMAT(res == VK_SUCCESS || res == VK_SUBOPTIMAL_KHR || res == VK_ERROR_OUT_OF_DATE_KHR || res == VK_NOT_READY || res == VK_TIMEOUT, "[copyAndPresent_presenterThread] failed to acquire swapchain image");
+                            FFX_ASSERT_MESSAGE_FORMAT(
+                                res == VK_SUCCESS || res == VK_SUBOPTIMAL_KHR || res == VK_ERROR_OUT_OF_DATE_KHR || res == VK_NOT_READY || res == VK_TIMEOUT,
+                                "[copyAndPresent_presenterThread] failed to acquire swapchain image");
 
                             SubmissionSemaphores toSignal;
                             SubmissionSemaphores toWait;
                             toWait.add(presenter->compositionSemaphore, frameInfo.presentIndex);  // composition to finish
-                            toSignal.add(presenter->frameRenderedSemaphores[imageIndex]);  // frame ready for present. Not a timeline semaphore
+                            toSignal.add(presenter->frameRenderedSemaphores[imageIndex]);         // frame ready for present. Not a timeline semaphore
 
                             // no image was acquired, just skip everything and signal the appropriate semaphores
 
@@ -1049,7 +1042,7 @@ DWORD WINAPI copyAndPresent_presenterThread(LPVOID pParam)
                                 res = presentCommandList->execute(toWait, toSignal);
 
                                 waitForPerformanceCount(previousPresentQpc + frameInfo.presentQpcDelta);
-                                QueryPerformanceCounter(reinterpret_cast<LARGE_INTEGER*>(&previousPresentQpc));
+                                //TODO QueryPerformanceCounter(reinterpret_cast<LARGE_INTEGER*>(&previousPresentQpc));
 
                                 res = presentToSwapChain(presenter, imageIndex, imageIndex);
                                 // VK_SUBOPTIMAL_KHR & VK_ERROR_OUT_OF_DATE_KHR: the swapchain has been recreated
@@ -1079,8 +1072,7 @@ DWORD WINAPI copyAndPresent_presenterThread(LPVOID pParam)
     return 0;
 }
 
-
-DWORD WINAPI composeAndPresent_presenterThread(LPVOID pParam)
+void* composeAndPresent_presenterThread(void* pParam)
 {
     FrameinterpolationPresentInfo* presenter = static_cast<FrameinterpolationPresentInfo*>(pParam);
 
@@ -1091,16 +1083,16 @@ DWORD WINAPI composeAndPresent_presenterThread(LPVOID pParam)
 
         while (!presenter->shutdown)
         {
-            WaitForSingleObject(presenter->pacerEvent, INFINITE);
+            posix_event_wait(&presenter->pacerEvent);
 
             if (!presenter->shutdown)
             {
-                EnterCriticalSection(&presenter->scheduledFrameCriticalSection);
+                presenter->scheduledFrameCriticalSection.lock();
 
                 PacingData entry = presenter->scheduledPresents;
                 presenter->scheduledPresents.invalidate();
 
-                LeaveCriticalSection(&presenter->scheduledFrameCriticalSection);
+                presenter->scheduledFrameCriticalSection.unlock();
 
                 if (entry.numFramesToPresent > 0)
                 {
@@ -1115,7 +1107,8 @@ DWORD WINAPI composeAndPresent_presenterThread(LPVOID pParam)
                     SubmissionSemaphores toWait;
                     toWait.add(presenter->gameSemaphore, entry.gameSemaphoreValue);
 
-                    bool uiSurfaceTransfered = (entry.uiSurface.resource == nullptr) || (presenter->gameQueue.familyIndex == presenter->presentQueue.familyIndex);
+                    bool uiSurfaceTransfered =
+                        (entry.uiSurface.resource == nullptr) || (presenter->gameQueue.familyIndex == presenter->presentQueue.familyIndex);
 
                     for (uint32_t frameType = 0; frameType < PacingData::FrameType::Count; frameType++)
                     {
@@ -1144,7 +1137,9 @@ DWORD WINAPI composeAndPresent_presenterThread(LPVOID pParam)
                             uint32_t    realSwapchainImageIndex = 0;
                             VkSemaphore acquireSemaphore        = VK_NULL_HANDLE;
                             VkResult    res                     = presenter->acquireNextRealImage(realSwapchainImageIndex, acquireSemaphore);
-                            FFX_ASSERT_MESSAGE_FORMAT(res == VK_SUCCESS || res == VK_SUBOPTIMAL_KHR || res == VK_ERROR_OUT_OF_DATE_KHR || res == VK_NOT_READY || res == VK_TIMEOUT, "[composeAndPresent_presenterThread] failed to acquire swapchain image");
+                            FFX_ASSERT_MESSAGE_FORMAT(
+                                res == VK_SUCCESS || res == VK_SUBOPTIMAL_KHR || res == VK_ERROR_OUT_OF_DATE_KHR || res == VK_NOT_READY || res == VK_TIMEOUT,
+                                "[composeAndPresent_presenterThread] failed to acquire swapchain image");
 
                             if (res == VK_SUCCESS || res == VK_SUBOPTIMAL_KHR)
                             {
@@ -1161,7 +1156,7 @@ DWORD WINAPI composeAndPresent_presenterThread(LPVOID pParam)
                                 FFX_ASSERT_MESSAGE_FORMAT(res == VK_SUCCESS, "compositeSwapChainFrame failed with error %d", res);
 
                                 waitForPerformanceCount(previousPresentQpc + frameInfo.presentQpcDelta);
-                                QueryPerformanceCounter(reinterpret_cast<LARGE_INTEGER*>(&previousPresentQpc));
+                                //TODO QueryPerformanceCounter(reinterpret_cast<LARGE_INTEGER*>(&previousPresentQpc));
 
                                 res = presentToSwapChain(presenter, realSwapchainImageIndex);
                                 // VK_SUBOPTIMAL_KHR & VK_ERROR_OUT_OF_DATE_KHR: the swapchain has been recreated
@@ -1184,7 +1179,8 @@ DWORD WINAPI composeAndPresent_presenterThread(LPVOID pParam)
                     // if no frame was presented, we still need to update the semaphore
                     if (toWait.count > 0)
                     {
-                        presenter->presentQueue.submit(VK_NULL_HANDLE, toWait, SubmissionSemaphores());
+                        SubmissionSemaphores ss;
+                        presenter->presentQueue.submit(VK_NULL_HANDLE, toWait, ss);
                     }
 
                     numFramesSentForPresentation = entry.numFramesSentForPresentationBase + entry.numFramesToPresent;
@@ -1198,59 +1194,60 @@ DWORD WINAPI composeAndPresent_presenterThread(LPVOID pParam)
     return 0;
 }
 
-DWORD WINAPI interpolationThread(LPVOID param)
+void* interpolationThread(void* param)
 {
     FrameinterpolationPresentInfo* presenter = static_cast<FrameinterpolationPresentInfo*>(param);
 
     if (presenter)
     {
-        HANDLE presenterThreadHandle = NULL;
+        pthread_t presenterThreadHandle = NULL;
         if (presenter->compositionMode == FGSwapchainCompositionMode::eComposeOnPresentQueue)
         {
-            presenterThreadHandle = CreateThread(nullptr, 0, composeAndPresent_presenterThread, param, 0, nullptr);
+            pthread_create(&presenterThreadHandle, nullptr, composeAndPresent_presenterThread, param);
         }
         else if (presenter->compositionMode == FGSwapchainCompositionMode::eComposeOnGameQueue)
         {
-            presenterThreadHandle = CreateThread(nullptr, 0, copyAndPresent_presenterThread, param, 0, nullptr);
+            pthread_create(&presenterThreadHandle, nullptr, copyAndPresent_presenterThread, param);
         }
-        
+
         FFX_ASSERT(presenterThreadHandle != NULL);
 
         if (presenterThreadHandle != 0)
         {
-            SetThreadPriority(presenterThreadHandle, THREAD_PRIORITY_HIGHEST);
-            SetThreadDescription(presenterThreadHandle, L"AMD FSR Presenter Thread");
+            struct sched_param param;
+            param.sched_priority = 10;
+            pthread_setschedparam(presenterThreadHandle, SCHED_RR, &param);
 
             SimpleMovingAverage<10, double> frameTime{};
-            int64_t previousQpc = 0;
+            int64_t                         previousQpc = 0;
 
             while (!presenter->shutdown)
             {
-                WaitForSingleObject(presenter->presentEvent, INFINITE);
+                posix_event_wait(&presenter->presentEvent);
 
                 if (!presenter->shutdown)
                 {
-                    EnterCriticalSection(&presenter->scheduledFrameCriticalSection);
+                    presenter->scheduledFrameCriticalSection.lock();
 
                     PacingData entry = presenter->scheduledInterpolations;
                     presenter->scheduledInterpolations.invalidate();
 
-                    LeaveCriticalSection(&presenter->scheduledFrameCriticalSection);
+                    presenter->scheduledFrameCriticalSection.unlock();
 
                     waitForSemaphoreValue(presenter->device,
                                           presenter->interpolationSemaphore,
                                           entry.frames[PacingData::FrameType::Interpolated_1].interpolationCompletedSemaphoreValue);
-                    SetEvent(presenter->interpolationEvent); // unlocks the queuePresent method
+                    posix_event_set(&presenter->interpolationEvent);  // unlocks the queuePresent method
 
                     int64_t currentQpc = 0;
-                    QueryPerformanceCounter(reinterpret_cast<LARGE_INTEGER*>(&currentQpc));
+                    //TODO QueryPerformanceCounter(reinterpret_cast<LARGE_INTEGER*>(&currentQpc));
 
                     const double deltaQpc = double(currentQpc - previousQpc) * (previousQpc > 0);
                     previousQpc           = currentQpc;
 
                     // reset pacing averaging if delta > 10 fps,
                     int64_t qpcFrequency;
-                    QueryPerformanceFrequency(reinterpret_cast<LARGE_INTEGER*>(&qpcFrequency));
+                    //TODO QueryPerformanceFrequency(reinterpret_cast<LARGE_INTEGER*>(&qpcFrequency));
                     const float fTimeoutInSeconds       = 0.1f;
                     double      deltaQpcResetThreashold = double(qpcFrequency * fTimeoutInSeconds);
                     if ((deltaQpc > deltaQpcResetThreashold) || presenter->resetTimer)
@@ -1263,24 +1260,24 @@ DWORD WINAPI interpolationThread(LPVOID param)
                     }
 
                     // set presentation time: reduce based on variance and subract safety margin so we don't lock on a framerate lower than necessary
-                    int64_t qpcSafetyMargin         = int64_t(qpcFrequency * presenter->safetyMarginInSec);
-                    const int64_t conservativeAvg   = int64_t(frameTime.getAverage() * 0.5 - frameTime.getVariance() * presenter->varianceFactor);
-                    const int64_t deltaToUse        = conservativeAvg > qpcSafetyMargin ? (conservativeAvg - qpcSafetyMargin) : 0;
+                    int64_t       qpcSafetyMargin = int64_t(qpcFrequency * presenter->safetyMarginInSec);
+                    const int64_t conservativeAvg = int64_t(frameTime.getAverage() * 0.5 - frameTime.getVariance() * presenter->varianceFactor);
+                    const int64_t deltaToUse      = conservativeAvg > qpcSafetyMargin ? (conservativeAvg - qpcSafetyMargin) : 0;
                     entry.frames[PacingData::FrameType::Interpolated_1].presentQpcDelta = deltaToUse;
                     entry.frames[PacingData::FrameType::Real].presentQpcDelta           = deltaToUse;
 
                     // schedule presents
-                    EnterCriticalSection(&presenter->scheduledFrameCriticalSection);
+                    presenter->scheduledFrameCriticalSection.lock();
                     presenter->scheduledPresents = entry;
-                    LeaveCriticalSection(&presenter->scheduledFrameCriticalSection);
-                    SetEvent(presenter->pacerEvent);
+                    presenter->scheduledFrameCriticalSection.unlock();
+                    posix_event_set(&presenter->pacerEvent);
                 }
             }
 
             // signal event to allow thread to finish
-            SetEvent(presenter->pacerEvent);
-            WaitForSingleObject(presenterThreadHandle, INFINITE);
-            SafeCloseHandle(presenterThreadHandle);
+            posix_event_set(&presenter->pacerEvent);
+            void* retval;
+            pthread_join(presenterThreadHandle, &retval);
         }
     }
 
@@ -1308,7 +1305,8 @@ FrameInterpolationSwapChainVK::~FrameInterpolationSwapChainVK()
 {
 }
 
-VkResult FrameInterpolationSwapChainVK::acquireNextImage(VkDevice device, VkSwapchainKHR swapchain, uint64_t timeout, VkSemaphore semaphore, VkFence fence, uint32_t* pImageIndex)
+VkResult FrameInterpolationSwapChainVK::acquireNextImage(
+    VkDevice device, VkSwapchainKHR swapchain, uint64_t timeout, VkSemaphore semaphore, VkFence fence, uint32_t* pImageIndex)
 {
     // this should always be the case
     if (semaphore == VK_NULL_HANDLE && fence == VK_NULL_HANDLE)
@@ -1316,20 +1314,20 @@ VkResult FrameInterpolationSwapChainVK::acquireNextImage(VkDevice device, VkSwap
     if (pImageIndex == nullptr)
         return VK_INCOMPLETE;
 
-    EnterCriticalSection(&criticalSection);
+    criticalSection.lock();
 
     *pImageIndex = (uint32_t)(acquiredCount % gameBufferCount);
 
     if (replacementSwapBuffers[*pImageIndex].image == VK_NULL_HANDLE)
     {
-        LeaveCriticalSection(&criticalSection);
+        criticalSection.unlock();
         return VK_ERROR_SURFACE_LOST_KHR;
     }
 
     // limit the acquired count
     if (acquiredCount > presentCount && (acquiredCount - presentCount) >= gameBufferCount)
     {
-        LeaveCriticalSection(&criticalSection);
+        criticalSection.unlock();
         return VK_NOT_READY;
     }
 
@@ -1345,7 +1343,7 @@ VkResult FrameInterpolationSwapChainVK::acquireNextImage(VkDevice device, VkSwap
 
     ++acquiredCount;
 
-    LeaveCriticalSection(&criticalSection);
+    criticalSection.unlock();
 
     return res;
 }
@@ -1353,26 +1351,26 @@ VkResult FrameInterpolationSwapChainVK::acquireNextImage(VkDevice device, VkSwap
 // structure holding all the structures that can extend VkSwapchainCreateInfoKHR
 struct SwapchainCreationInfo
 {
-    VkSwapchainCreateInfoKHR                 swapchain;
+    VkSwapchainCreateInfoKHR swapchain;
 
-    VkImageCompressionControlEXT             imageCompressionControl;
-    VkImageFormatListCreateInfo              imageFormatList;
-    VkSurfaceFullScreenExclusiveInfoEXT      surfaceFullScreenExclusive;
-    VkSurfaceFullScreenExclusiveWin32InfoEXT surfaceFullScreenExclusiveWin32;
+    VkImageCompressionControlEXT imageCompressionControl;
+    VkImageFormatListCreateInfo  imageFormatList;
+    //TODO VkSurfaceFullScreenExclusiveInfoEXT      surfaceFullScreenExclusive;
+    //TODO VkSurfaceFullScreenExclusiveWin32InfoEXT surfaceFullScreenExclusiveWin32;
     VkSwapchainCounterCreateInfoEXT          swapchainCounter;
     VkSwapchainDisplayNativeHdrCreateInfoAMD swapchainDisplayNativeHdr;
     VkSwapchainPresentModesCreateInfoEXT     swapchainPresentModes;
 };
 
-#define FFX_USE_PNEXT_AS_IS(name, type) \
+#define FFX_USE_PNEXT_AS_IS(name, type)                                                 \
     realSwapchainCreateInfo.name            = *reinterpret_cast<const type*>(pCurrent); \
     realSwapchainCreateInfo.name.pNext      = realSwapchainCreateInfo.swapchain.pNext;  \
-    realSwapchainCreateInfo.swapchain.pNext = &realSwapchainCreateInfo.name;\
+    realSwapchainCreateInfo.swapchain.pNext = &realSwapchainCreateInfo.name;
 
 VkResult getRealSwapchainCreateInfo(const VkSwapchainCreateInfoKHR* pCreateInfo, SwapchainCreationInfo& realSwapchainCreateInfo)
 {
     // fix VkSwapchainCreateInfoKHR
-    realSwapchainCreateInfo.swapchain = *pCreateInfo;
+    realSwapchainCreateInfo.swapchain       = *pCreateInfo;
     realSwapchainCreateInfo.swapchain.pNext = nullptr;
 
     realSwapchainCreateInfo.swapchain.imageUsage |= VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
@@ -1393,12 +1391,13 @@ VkResult getRealSwapchainCreateInfo(const VkSwapchainCreateInfoKHR* pCreateInfo,
             FFX_USE_PNEXT_AS_IS(imageFormatList, VkImageFormatListCreateInfo);
             break;
         case VK_STRUCTURE_TYPE_SURFACE_FULL_SCREEN_EXCLUSIVE_INFO_EXT:
-            realSwapchainCreateInfo.surfaceFullScreenExclusive       = *reinterpret_cast<const VkSurfaceFullScreenExclusiveInfoEXT*>(pCurrent);
-            realSwapchainCreateInfo.surfaceFullScreenExclusive.pNext = const_cast<void*>(realSwapchainCreateInfo.swapchain.pNext);  // because pNext is void* instead of const void* in vulkan header
-            realSwapchainCreateInfo.swapchain.pNext                  = &realSwapchainCreateInfo.surfaceFullScreenExclusive;
+            //TODO realSwapchainCreateInfo.surfaceFullScreenExclusive = *reinterpret_cast<const VkSurfaceFullScreenExclusiveInfoEXT*>(pCurrent);
+            //TODO realSwapchainCreateInfo.surfaceFullScreenExclusive.pNext =
+            //TODO     const_cast<void*>(realSwapchainCreateInfo.swapchain.pNext);  // because pNext is void* instead of const void* in vulkan header
+            //TODO realSwapchainCreateInfo.swapchain.pNext = &realSwapchainCreateInfo.surfaceFullScreenExclusive;
             break;
         case VK_STRUCTURE_TYPE_SURFACE_FULL_SCREEN_EXCLUSIVE_WIN32_INFO_EXT:
-            FFX_USE_PNEXT_AS_IS(surfaceFullScreenExclusiveWin32, VkSurfaceFullScreenExclusiveWin32InfoEXT);
+            //TODO FFX_USE_PNEXT_AS_IS(surfaceFullScreenExclusiveWin32, VkSurfaceFullScreenExclusiveWin32InfoEXT);
             break;
         case VK_STRUCTURE_TYPE_SWAPCHAIN_COUNTER_CREATE_INFO_EXT:
             FFX_USE_PNEXT_AS_IS(swapchainCounter, VkSwapchainCounterCreateInfoEXT);
@@ -1418,7 +1417,6 @@ VkResult getRealSwapchainCreateInfo(const VkSwapchainCreateInfoKHR* pCreateInfo,
     return VK_SUCCESS;
 }
 
-
 VkResult FrameInterpolationSwapChainVK::init(const VkSwapchainCreateInfoKHR* pCreateInfo, const VkFrameInterpolationInfoFFX* pFrameInterpolationInfo)
 {
     if (pFrameInterpolationInfo == nullptr || pCreateInfo == nullptr)
@@ -1432,7 +1430,7 @@ VkResult FrameInterpolationSwapChainVK::init(const VkSwapchainCreateInfoKHR* pCr
     const VkAllocationCallbacks* pAllocator = pFrameInterpolationInfo->pAllocator;
 
     DebugNameSetter debugNameSetter(device);
-    
+
     // create semaphores
     VkSemaphoreTypeCreateInfo semaphoreTypeCreateInfo = {};
     semaphoreTypeCreateInfo.sType                     = VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO;
@@ -1466,7 +1464,7 @@ VkResult FrameInterpolationSwapChainVK::init(const VkSwapchainCreateInfoKHR* pCr
     };
 
     VkResult res = VK_SUCCESS;
-    res = createSemaphore(presentInfo.gameSemaphore, "AMD FSR GameSemaphore");
+    res          = createSemaphore(presentInfo.gameSemaphore, "AMD FSR GameSemaphore");
     EXIT_ON_VKRESULT_NOT_SUCCESS(res);
     res = createSemaphore(presentInfo.interpolationSemaphore, "AMD FSR InterpolationSemaphore");
     EXIT_ON_VKRESULT_NOT_SUCCESS(res);
@@ -1476,7 +1474,6 @@ VkResult FrameInterpolationSwapChainVK::init(const VkSwapchainCreateInfoKHR* pCr
     EXIT_ON_VKRESULT_NOT_SUCCESS(res);
     res = createSemaphore(presentInfo.compositionSemaphore, "AMD FSR CompositionSemaphore");
     EXIT_ON_VKRESULT_NOT_SUCCESS(res);
-
 
     // create non-timeline semaphores
     semaphoreCreateInfo.pNext = nullptr;
@@ -1503,8 +1500,7 @@ VkResult FrameInterpolationSwapChainVK::init(const VkSwapchainCreateInfoKHR* pCr
     // check that the queues are separate
     if (presentInfo.gameQueue.queue == presentInfo.asyncComputeQueue.queue || presentInfo.gameQueue.queue == presentInfo.presentQueue.queue ||
         presentInfo.gameQueue.queue == imageAcquireQueue.queue || presentInfo.asyncComputeQueue.queue == presentInfo.presentQueue.queue ||
-        presentInfo.asyncComputeQueue.queue == imageAcquireQueue.queue ||
-        presentInfo.presentQueue.queue == imageAcquireQueue.queue)
+        presentInfo.asyncComputeQueue.queue == imageAcquireQueue.queue || presentInfo.presentQueue.queue == imageAcquireQueue.queue)
     {
         return VK_ERROR_INITIALIZATION_FAILED;
     }
@@ -1536,7 +1532,7 @@ VkResult FrameInterpolationSwapChainVK::init(const VkSwapchainCreateInfoKHR* pCr
         return VK_ERROR_INITIALIZATION_FAILED;
 
     const VkQueueFamilyProperties presentQueueProperties = properties[presentInfo.presentQueue.familyIndex];
-    VkBool32 supportsPresent = VK_FALSE;
+    VkBool32                      supportsPresent        = VK_FALSE;
     res = vkGetPhysicalDeviceSurfaceSupportKHR(presentInfo.physicalDevice, presentInfo.presentQueue.familyIndex, pCreateInfo->surface, &supportsPresent);
     EXIT_ON_VKRESULT_NOT_SUCCESS(res);
 
@@ -1581,14 +1577,15 @@ VkResult FrameInterpolationSwapChainVK::init(const VkSwapchainCreateInfoKHR* pCr
             return VK_ERROR_INITIALIZATION_FAILED;
     }
 
-    InitializeCriticalSection(&criticalSection);
-    InitializeCriticalSection(&criticalSectionUpdateConfig);
-    InitializeCriticalSection(&presentInfo.scheduledFrameCriticalSection);
-    InitializeCriticalSection(&presentInfo.swapchainCriticalSection);
+    //InitializeCriticalSection(&criticalSection);
+    //InitializeCriticalSection(&criticalSectionUpdateConfig);
+    //InitializeCriticalSection(&presentInfo.scheduledFrameCriticalSection);
+    //InitializeCriticalSection(&presentInfo.swapchainCriticalSection);
 
-    presentInfo.presentEvent       = CreateEvent(NULL, FALSE, FALSE, TEXT("PresentEvent"));
-    presentInfo.interpolationEvent = CreateEvent(NULL, FALSE, TRUE, TEXT("InterpolationEvent"));
-    presentInfo.pacerEvent         = CreateEvent(NULL, FALSE, FALSE, TEXT("PacerEvent"));
+    // presentInfo.presentEvent       = CreateEvent(NULL, FALSE, FALSE, TEXT("PresentEvent"));
+    // presentInfo.interpolationEvent = CreateEvent(NULL, FALSE, TRUE, TEXT("InterpolationEvent"));
+    // presentInfo.pacerEvent         = CreateEvent(NULL, FALSE, FALSE, TEXT("PacerEvent"));
+    posix_event_set(&presentInfo.interpolationEvent);
 
     // create the real swapchain
     SwapchainCreationInfo realSwapchainCreateInfo;
@@ -1624,7 +1621,7 @@ VkResult FrameInterpolationSwapChainVK::init(const VkSwapchainCreateInfoKHR* pCr
 
     // get all the images of the swapchain
     presentInfo.realSwapchainImageCount = 0;
-    res = vkGetSwapchainImagesKHR(device, presentInfo.realSwapchain, &presentInfo.realSwapchainImageCount, nullptr);
+    res                                 = vkGetSwapchainImagesKHR(device, presentInfo.realSwapchain, &presentInfo.realSwapchainImageCount, nullptr);
     if (res != VK_SUCCESS || presentInfo.realSwapchainImageCount > FFX_FRAME_INTERPOLATION_SWAP_CHAIN_MAX_BUFFER_COUNT)
         return VK_ERROR_INITIALIZATION_FAILED;
     res = vkGetSwapchainImagesKHR(device, presentInfo.realSwapchain, &presentInfo.realSwapchainImageCount, presentInfo.realSwapchainImages);
@@ -1632,9 +1629,10 @@ VkResult FrameInterpolationSwapChainVK::init(const VkSwapchainCreateInfoKHR* pCr
 
     for (uint32_t i = 0; i < presentInfo.realSwapchainImageCount; ++i)
     {
-        debugNameSetter.setDebugName(presentInfo.realSwapchainImages[i], VK_OBJECT_TYPE_IMAGE, "AMD FSR Real swapchain image %d", i);  // it's fine if this fails
+        debugNameSetter.setDebugName(
+            presentInfo.realSwapchainImages[i], VK_OBJECT_TYPE_IMAGE, "AMD FSR Real swapchain image %d", i);  // it's fine if this fails
     }
- 
+
     presentInfo.realSwapchainImageDescription.type     = FFX_RESOURCE_TYPE_TEXTURE2D;
     presentInfo.realSwapchainImageDescription.format   = ffxGetSurfaceFormatVK(pCreateInfo->imageFormat);
     presentInfo.realSwapchainImageDescription.width    = pCreateInfo->imageExtent.width;
@@ -1668,9 +1666,10 @@ VkResult FrameInterpolationSwapChainVK::init(const VkSwapchainCreateInfoKHR* pCr
     info.arrayLayers       = 1;
     info.samples           = VK_SAMPLE_COUNT_1_BIT;
     info.tiling            = VK_IMAGE_TILING_OPTIMAL;
-    info.usage             = VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
-    info.initialLayout     = VK_IMAGE_LAYOUT_UNDEFINED;
-    info.sharingMode       = VK_SHARING_MODE_EXCLUSIVE; // queue family ownership transfer will be handled manually
+    info.usage             = VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT |
+                 VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+    info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    info.sharingMode   = VK_SHARING_MODE_EXCLUSIVE;  // queue family ownership transfer will be handled manually
 
     VkPhysicalDeviceMemoryProperties memProperties;
     vkGetPhysicalDeviceMemoryProperties(presentInfo.physicalDevice, &memProperties);
@@ -1688,26 +1687,17 @@ VkResult FrameInterpolationSwapChainVK::init(const VkSwapchainCreateInfoKHR* pCr
     }
     // No need to set the layout of the images as vulkan API states that a presentable image starts out at an undefined layout.
 
-    for (uint32_t i = 0; i < _countof(interpolationOutputs); ++i)
+    for (uint32_t i = 0; i < std::size(interpolationOutputs); ++i)
     {
-        res = createImage(interpolationOutputs[i],
-                          info,
-                          presentInfo.realSwapchainImageDescription.format,
-                          "AMD FSR Interpolation Output %d",
-                          i,
-                          memProperties,
-                          pAllocator);
+        res = createImage(
+            interpolationOutputs[i], info, presentInfo.realSwapchainImageDescription.format, "AMD FSR Interpolation Output %d", i, memProperties, pAllocator);
         EXIT_ON_VKRESULT_NOT_SUCCESS(res);
     }
 
     if (presentInfo.compositionMode == FGSwapchainCompositionMode::eComposeOnGameQueue)
     {
-        res = createImage(presentInfo.compositionOutput,
-                          info,
-                          presentInfo.realSwapchainImageDescription.format,
-                          "AMD FSR Composition Output",
-                          memProperties,
-                          pAllocator);
+        res = createImage(
+            presentInfo.compositionOutput, info, presentInfo.realSwapchainImageDescription.format, "AMD FSR Composition Output", memProperties, pAllocator);
         EXIT_ON_VKRESULT_NOT_SUCCESS(res);
     }
 
@@ -1750,16 +1740,6 @@ void FrameInterpolationSwapChainVK::destroySwapchain(VkDevice device, const VkAl
     presentInfo.asyncComputeQueue.reset();
     presentInfo.presentQueue.reset();
 
-    // delete win32 objects
-    DeleteCriticalSection(&criticalSection);
-    DeleteCriticalSection(&criticalSectionUpdateConfig);
-    DeleteCriticalSection(&presentInfo.scheduledFrameCriticalSection);
-    DeleteCriticalSection(&presentInfo.swapchainCriticalSection);
-
-    SafeCloseHandle(presentInfo.presentEvent);
-    SafeCloseHandle(presentInfo.interpolationEvent);
-    SafeCloseHandle(presentInfo.pacerEvent);
-
     // delete real swapchain
     vkDestroySwapchainKHR(device, presentInfo.realSwapchain, pAllocator);
     presentInfo.realSwapchain = VK_NULL_HANDLE;
@@ -1777,7 +1757,7 @@ void FrameInterpolationSwapChainVK::destroySwapchain(VkDevice device, const VkAl
         destroyImage(replacementSwapBuffers[i], pAllocator);
     }
 
-    for (uint32_t i = 0; i < _countof(interpolationOutputs); ++i)
+    for (uint32_t i = 0; i < std::size(interpolationOutputs); ++i)
     {
         destroyImage(interpolationOutputs[i], pAllocator);
     }
@@ -1808,7 +1788,7 @@ VkResult FrameInterpolationSwapChainVK::getSwapchainImages(VkDevice device, uint
 void FrameInterpolationSwapChainVK::discardOutstandingInterpolationCommandLists()
 {
     // drop any outstanding interpolaton command lists
-    for (int i = 0; i < _countof(registeredInterpolationCommandLists); i++)
+    for (int i = 0; i < std::size(registeredInterpolationCommandLists); i++)
     {
         if (registeredInterpolationCommandLists[i] != nullptr)
         {
@@ -1822,11 +1802,11 @@ void FrameInterpolationSwapChainVK::setFrameGenerationConfig(FfxFrameGenerationC
 {
     FFX_ASSERT(config);
 
-    EnterCriticalSection(&criticalSectionUpdateConfig);
+    criticalSectionUpdateConfig.lock();
 
     // if config is a pointer to the internal config ::present called this function to apply the changes
     bool applyChangesNow = (config == &nextFrameGenerationConfig);
-    
+
     FfxPresentCallbackFunc inputPresentCallback    = (nullptr != config->presentCallback) ? config->presentCallback : ffxFrameInterpolationUiComposition;
     void*                  inputPresentCallbackCtx = (nullptr != config->presentCallback) ? config->presentCallbackContext : nullptr;
     VulkanQueue            inputInterpolationQueue = config->allowAsyncWorkloads ? presentInfo.asyncComputeQueue : presentInfo.gameQueue;
@@ -1844,13 +1824,10 @@ void FrameInterpolationSwapChainVK::setFrameGenerationConfig(FfxFrameGenerationC
         }
 
         // in case of actual reconfiguration: apply the changes immediately
-        if ( presentInfo.interpolationQueue.queue != inputInterpolationQueue.queue
-            || interpolationEnabled != config->frameGenerationEnabled
-            || presentCallback != inputPresentCallback
-            || presentCallbackContext != inputPresentCallbackCtx 
-            || frameGenerationCallback != config->frameGenerationCallback
-            || frameGenerationCallbackContext != config->frameGenerationCallbackContext
-            || drawDebugPacingLines != config->drawDebugPacingLines)
+        if (presentInfo.interpolationQueue.queue != inputInterpolationQueue.queue || interpolationEnabled != config->frameGenerationEnabled ||
+            presentCallback != inputPresentCallback || presentCallbackContext != inputPresentCallbackCtx ||
+            frameGenerationCallback != config->frameGenerationCallback || frameGenerationCallbackContext != config->frameGenerationCallbackContext ||
+            drawDebugPacingLines != config->drawDebugPacingLines)
         {
             applyChangesNow = true;
         }
@@ -1858,7 +1835,7 @@ void FrameInterpolationSwapChainVK::setFrameGenerationConfig(FfxFrameGenerationC
 
     if (applyChangesNow)
     {
-        EnterCriticalSection(&criticalSection);
+        criticalSection.lock();
 
         currentFrameID          = config->frameID;
         presentInterpolatedOnly = config->onlyPresentInterpolated;
@@ -1901,10 +1878,10 @@ void FrameInterpolationSwapChainVK::setFrameGenerationConfig(FfxFrameGenerationC
             }
         }
 
-        LeaveCriticalSection(&criticalSection);
+        criticalSection.unlock();
     }
 
-    LeaveCriticalSection(&criticalSectionUpdateConfig);
+    criticalSectionUpdateConfig.unlock();
 }
 
 bool FrameInterpolationSwapChainVK::waitForPresents()
@@ -1921,7 +1898,7 @@ bool FrameInterpolationSwapChainVK::waitForPresents()
     FFX_ASSERT(waitRes);
 
     // wait for queue idle too, to make sure all the semaphores are signaled
-    VkResult res = VK_SUCCESS; 
+    VkResult res = VK_SUCCESS;
     if (res == VK_SUCCESS && presentInfo.asyncComputeQueue.queue != VK_NULL_HANDLE)
         res = vkQueueWaitIdle(presentInfo.asyncComputeQueue.queue);
     if (res == VK_SUCCESS && presentInfo.presentQueue.queue != VK_NULL_HANDLE)
@@ -1956,9 +1933,9 @@ void FrameInterpolationSwapChainVK::dispatchInterpolationCommands(uint32_t      
     FFX_ASSERT(pInterpolatedFrame);
     FFX_ASSERT(pRealFrame);
 
-    VkImage                currentBackBuffer      = replacementSwapBuffers[currentBackBufferIndex].image;
-    FfxResourceDescription gameFrameDesc          = replacementSwapBuffers[currentBackBufferIndex].description;
-    FfxResource            backbuffer             = ffxGetResourceVK(currentBackBuffer, gameFrameDesc, nullptr, FFX_RESOURCE_STATE_PIXEL_COMPUTE_READ);
+    VkImage                currentBackBuffer = replacementSwapBuffers[currentBackBufferIndex].image;
+    FfxResourceDescription gameFrameDesc     = replacementSwapBuffers[currentBackBufferIndex].description;
+    FfxResource            backbuffer        = ffxGetResourceVK(currentBackBuffer, gameFrameDesc, nullptr, FFX_RESOURCE_STATE_PIXEL_COMPUTE_READ);
 
     *pRealFrame = backbuffer;
 
@@ -1990,7 +1967,7 @@ void FrameInterpolationSwapChainVK::dispatchInterpolationCommands(uint32_t      
     // interpolation texture previous content doesn't matter here so we can use an undefined source layout
     preInterpolationBarriers.add(
         interpolationOutputs[interpolationBufferIndex].image, 0, VK_ACCESS_SHADER_WRITE_BIT, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL);
-    
+
     auto pRegisteredCommandList = registeredInterpolationCommandLists[currentBackBufferIndex];
     if (pRegisteredCommandList != nullptr)
     {
@@ -2000,8 +1977,7 @@ void FrameInterpolationSwapChainVK::dispatchInterpolationCommands(uint32_t      
         {
             // we have some necessary transitions, but we need a new command list
 
-            VkCommands* interpolationCommandList =
-                presentInfo.commandPool.get(presentInfo.device, presentInfo.interpolationQueue, "interpolationCommandList");
+            VkCommands* interpolationCommandList = presentInfo.commandPool.get(presentInfo.device, presentInfo.interpolationQueue, "interpolationCommandList");
             VkCommandBuffer interpolationCommandBuffer = interpolationCommandList->reset();
 
             preInterpolationBarriers.record(interpolationCommandBuffer);
@@ -2016,11 +1992,11 @@ void FrameInterpolationSwapChainVK::dispatchInterpolationCommands(uint32_t      
         FFX_ASSERT_MESSAGE_FORMAT(res == VK_SUCCESS, "dispatchInterpolationCommands failed with error %d", res);
 
         frameInterpolationResetCondition = false;
-        *pInterpolatedFrame = interpolationOutput();
+        *pInterpolatedFrame              = interpolationOutput();
     }
     else
     {
-        VkCommands* interpolationCommandList = presentInfo.commandPool.get(presentInfo.device, presentInfo.interpolationQueue, "interpolationCommandList");
+        VkCommands*     interpolationCommandList = presentInfo.commandPool.get(presentInfo.device, presentInfo.interpolationQueue, "interpolationCommandList");
         VkCommandBuffer interpolationCommandBuffer = interpolationCommandList->reset();
 
         FfxResource interpolatedResource = interpolationOutput();
@@ -2175,22 +2151,21 @@ VkResult FrameInterpolationSwapChainVK::presentInterpolated(const VkPresentInfoK
     ToWaitInterpolationQueue.add(presentInfo.gameSemaphore, gameSemaphoreValue);
 
     FfxResource interpolatedFrame{}, realFrame{};
-    dispatchInterpolationCommands(
-        currentBackBufferIndex, &interpolatedFrame, &realFrame, ToWaitInterpolationQueue);
+    dispatchInterpolationCommands(currentBackBufferIndex, &interpolatedFrame, &realFrame, ToWaitInterpolationQueue);
 
-    EnterCriticalSection(&presentInfo.scheduledFrameCriticalSection);
+    presentInfo.scheduledFrameCriticalSection.lock();
 
     PacingData entry{};
-    entry.presentCallback                  = presentCallback;
-    entry.presentCallbackContext           = presentCallbackContext;
-    entry.drawDebugPacingLines             = drawDebugPacingLines;
+    entry.presentCallback        = presentCallback;
+    entry.presentCallbackContext = presentCallbackContext;
+    entry.drawDebugPacingLines   = drawDebugPacingLines;
     if (presentInfo.uiCompositionFlags & FFX_UI_COMPOSITION_FLAG_ENABLE_INTERNAL_UI_DOUBLE_BUFFERING)
     {
         entry.uiSurface = ffxGetResourceVK(uiReplacementBuffer.image, uiReplacementBuffer.description, nullptr, FFX_RESOURCE_STATE_PIXEL_COMPUTE_READ);
     }
     else
     {
-        entry.uiSurface                    = presentInfo.currentUiSurface;
+        entry.uiSurface = presentInfo.currentUiSurface;
     }
     entry.presentMode                      = presentMode;
     entry.numFramesSentForPresentationBase = framesSentForPresentation;
@@ -2234,31 +2209,30 @@ VkResult FrameInterpolationSwapChainVK::presentInterpolated(const VkPresentInfoK
 
     presentInfo.resetTimer              = frameInterpolationResetCondition;
     presentInfo.scheduledInterpolations = entry;
-    LeaveCriticalSection(&presentInfo.scheduledFrameCriticalSection);
+    presentInfo.scheduledFrameCriticalSection.unlock();
 
     // Set event to kick off async CPU present thread
-    SetEvent(presentInfo.presentEvent);
+    posix_event_set(&presentInfo.presentEvent);
 
     return presentInfo.lastPresentResult.load();
 }
 
 void FrameInterpolationSwapChainVK::registerUiResource(FfxResource uiResource, uint32_t flags)
 {
-    EnterCriticalSection(&criticalSection);
+    criticalSection.lock();
 
-    presentInfo.currentUiSurface = uiResource;
+    presentInfo.currentUiSurface   = uiResource;
     presentInfo.uiCompositionFlags = flags;
     if (nullptr == uiResource.resource)
         presentInfo.uiCompositionFlags &= ~FFX_UI_COMPOSITION_FLAG_ENABLE_INTERNAL_UI_DOUBLE_BUFFERING;
 
-    LeaveCriticalSection(&criticalSection);
+    criticalSection.unlock();
 }
 
 void FrameInterpolationSwapChainVK::setWaitCallback(FfxWaitCallbackFunc waitCallbackFunc)
 {
     presentInfo.waitCallback = waitCallbackFunc;
 }
-
 
 void FrameInterpolationSwapChainVK::getGpuMemoryUsage(FfxEffectMemoryUsage* vramUsage)
 {
@@ -2268,8 +2242,8 @@ void FrameInterpolationSwapChainVK::getGpuMemoryUsage(FfxEffectMemoryUsage* vram
 
 void FrameInterpolationSwapChainVK::setFramePacingTuning(const FfxSwapchainFramePacingTuning* framePacingTuning)
 {
-    presentInfo.safetyMarginInSec = static_cast<double> (framePacingTuning->safetyMarginInMs) / 1000.0;
-    presentInfo.varianceFactor = static_cast<double> (framePacingTuning->varianceFactor);
+    presentInfo.safetyMarginInSec = static_cast<double>(framePacingTuning->safetyMarginInMs) / 1000.0;
+    presentInfo.varianceFactor    = static_cast<double>(framePacingTuning->varianceFactor);
 }
 
 VkResult FrameInterpolationSwapChainVK::queuePresentNonInterpolated(VkCommands* pCommands, uint32_t imageIndex, SubmissionSemaphores& semaphoresToWait)
@@ -2312,7 +2286,8 @@ VkResult FrameInterpolationSwapChainVK::presentPassthrough(uint32_t             
         VK_ACCESS_TRANSFER_READ_BIT,
         ReplacementBufferTransferState.layout,
         VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-        presentInfo.gameQueue.familyIndex,  // if game queue and present queue families are different, this will automatically be a queue family ownership transfer barrier)
+        presentInfo.gameQueue
+            .familyIndex,  // if game queue and present queue families are different, this will automatically be a queue family ownership transfer barrier)
         presentInfo.presentQueue.familyIndex);
 
     if (presentInfo.presentQueue.familyIndex != presentInfo.gameQueue.familyIndex)
@@ -2355,7 +2330,7 @@ VkResult FrameInterpolationSwapChainVK::presentPassthrough(uint32_t             
 
     // revert replacement buffer to shader read layout
     flipBarrier(srcBarrier);
-    
+
     // set real swapchain buffer to present layout
     dstBarrier = getImageMemoryBarrier(dstImage, VK_ACCESS_TRANSFER_WRITE_BIT, 0, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
 
@@ -2367,14 +2342,11 @@ VkResult FrameInterpolationSwapChainVK::presentPassthrough(uint32_t             
     return queuePresentNonInterpolated(passthroughList, imageIndex, presentQueueWait);
 }
 
-VkResult FrameInterpolationSwapChainVK::presentNonInterpolatedWithUiCompositionOnPresentQueue(uint32_t              imageIndex,
-                                                                                              SubmissionSemaphores& gameQueueWait,
-                                                                                              SubmissionSemaphores& gameQueueSignal,
-                                                                                              SubmissionSemaphores& presentQueueWait,
-                                                                                              bool                  needUICopy)
+VkResult FrameInterpolationSwapChainVK::presentNonInterpolatedWithUiCompositionOnPresentQueue(
+    uint32_t imageIndex, SubmissionSemaphores& gameQueueWait, SubmissionSemaphores& gameQueueSignal, SubmissionSemaphores& presentQueueWait, bool needUICopy)
 {
     bool needQueueOwnershipTransfer = presentInfo.presentQueue.familyIndex != presentInfo.gameQueue.familyIndex;
-    
+
     VkImage srcImage = replacementSwapBuffers[replacementSwapBufferIndex].image;
     VkImage dstImage = presentInfo.realSwapchainImages[imageIndex];
 
@@ -2386,7 +2358,7 @@ VkResult FrameInterpolationSwapChainVK::presentNonInterpolatedWithUiCompositionO
         VkCommandBuffer ownershipCommandBuffer = ownershipList->reset();
 
         ImageBarrierHelper gameQueueBarriers;
-        
+
         if (needUICopy)
         {
             // copy on game queue and transfer to present queue if necessary
@@ -2438,8 +2410,8 @@ VkResult FrameInterpolationSwapChainVK::presentNonInterpolatedWithUiCompositionO
     // FFX doesn't have a undefined state. Transition to Present here. It will come back as Present after the callback
     presentQueueBarriers.add(dstImage, 0, 0, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
 
-    auto            uiCompositionList = presentInfo.commandPool.get(presentInfo.device, presentInfo.presentQueue, "uiCompositionList");
-    VkCommandBuffer uiCompositionCommandBuffer     = uiCompositionList->reset();
+    auto            uiCompositionList          = presentInfo.commandPool.get(presentInfo.device, presentInfo.presentQueue, "uiCompositionList");
+    VkCommandBuffer uiCompositionCommandBuffer = uiCompositionList->reset();
 
     // transition layout & queue family ownership transfer (if necessary)
     presentQueueBarriers.record(uiCompositionCommandBuffer);
@@ -2461,25 +2433,22 @@ VkResult FrameInterpolationSwapChainVK::presentNonInterpolatedWithUiCompositionO
     {
         desc.currentUI = presentInfo.currentUiSurface;
     }
-    desc.frameID               = currentFrameID;
+    desc.frameID = currentFrameID;
 
     presentCallback(&desc, presentCallbackContext);
 
     return queuePresentNonInterpolated(uiCompositionList, imageIndex, presentQueueWait);
 }
 
-VkResult FrameInterpolationSwapChainVK::presentNonInterpolatedWithUiCompositionOnGameQueue(uint32_t              imageIndex,
-                                                                                           SubmissionSemaphores& gameQueueWait,
-                                                                                           SubmissionSemaphores& gameQueueSignal,
-                                                                                           SubmissionSemaphores& presentQueueWait,
-                                                                                           bool                  needUICopy)
+VkResult FrameInterpolationSwapChainVK::presentNonInterpolatedWithUiCompositionOnGameQueue(
+    uint32_t imageIndex, SubmissionSemaphores& gameQueueWait, SubmissionSemaphores& gameQueueSignal, SubmissionSemaphores& presentQueueWait, bool needUICopy)
 {
     auto            uiCompositionList          = presentInfo.commandPool.get(presentInfo.device, presentInfo.gameQueue, "uiCompositionList");
     VkCommandBuffer uiCompositionCommandBuffer = uiCompositionList->reset();
 
     if (needUICopy)
         copyUiResource(uiCompositionCommandBuffer, gameQueueWait, false);
-    
+
     VkImage srcImage = replacementSwapBuffers[replacementSwapBufferIndex].image;
     VkImage dstImage = presentInfo.realSwapchainImages[imageIndex];
 
@@ -2508,8 +2477,8 @@ VkResult FrameInterpolationSwapChainVK::presentNonInterpolatedWithUiCompositionO
     {
         desc.currentUI = presentInfo.currentUiSurface;
     }
-    desc.usePremulAlpha        = ((presentInfo.uiCompositionFlags & FFX_UI_COMPOSITION_FLAG_USE_PREMUL_ALPHA) != 0);
-    desc.frameID               = currentFrameID;
+    desc.usePremulAlpha = ((presentInfo.uiCompositionFlags & FFX_UI_COMPOSITION_FLAG_USE_PREMUL_ALPHA) != 0);
+    desc.frameID        = currentFrameID;
     presentCallback(&desc, presentCallbackContext);
 
     gameQueueSignal.add(presentInfo.replacementBufferSemaphore, ++framesSentForPresentation);
@@ -2549,7 +2518,8 @@ VkResult FrameInterpolationSwapChainVK::presentNonInterpolatedWithUiCompositionO
         SubmissionSemaphores presentQueueSignal;
         presentQueueSignal.add(presentInfo.frameRenderedSemaphores[imageIndex]);  // not a timeline semaphore
         res = ownershipList->execute(presentQueueWait, presentQueueSignal);
-        FFX_ASSERT_MESSAGE_FORMAT(res == VK_SUCCESS, "[queuePresentNonInterpolated] queue family ownership transfer to present queue failed with error %d", res);
+        FFX_ASSERT_MESSAGE_FORMAT(
+            res == VK_SUCCESS, "[queuePresentNonInterpolated] queue family ownership transfer to present queue failed with error %d", res);
     }
 
     VkResult presentRes = presentToSwapChain(&presentInfo, imageIndex, imageIndex);
@@ -2569,10 +2539,10 @@ VkResult FrameInterpolationSwapChainVK::presentNonInterpolatedWithUiCompositionO
 VkResult FrameinterpolationPresentInfo::acquireNextRealImage(uint32_t& imageIndex, VkSemaphore& acquireSemaphore)
 {
     acquireSemaphore = acquireSemaphores[nextAcquireSemaphoreIndex];
-    EnterCriticalSection(&swapchainCriticalSection);
+    swapchainCriticalSection.lock();
     VkResult res = vkAcquireNextImageKHR(device, realSwapchain, UINT64_MAX, acquireSemaphore, VK_NULL_HANDLE, &imageIndex);
-    LeaveCriticalSection(&swapchainCriticalSection);
-    
+    swapchainCriticalSection.unlock();
+
     // only increment on success
     // VK_NOT_READY shouldn't be returned according to the Vulkan spec, as timeout isn't 0
     // https://registry.khronos.org/vulkan/specs/latest/html/vkspec.html#vkAcquireNextImageKHR
@@ -2596,12 +2566,13 @@ VkResult FrameInterpolationSwapChainVK::queuePresent(VkQueue queue, const VkPres
 
     setFrameGenerationConfig(&nextFrameGenerationConfig);
 
-    EnterCriticalSection(&criticalSection);
+    criticalSection.lock();
 
     uint32_t currentBackBufferIndex = replacementSwapBufferIndex;
 
     // ensure that we aren't running too ahead of the
-    FFX_ASSERT_MESSAGE(pPresentInfo->pImageIndices[0] == replacementSwapBufferIndex, "Presented image and internal replacement swap buffer index aren't in sync.");
+    FFX_ASSERT_MESSAGE(pPresentInfo->pImageIndices[0] == replacementSwapBufferIndex,
+                       "Presented image and internal replacement swap buffer index aren't in sync.");
 
     // first determine which codepath to run
     bool bRunInterpolation = true;
@@ -2622,7 +2593,7 @@ VkResult FrameInterpolationSwapChainVK::queuePresent(VkQueue queue, const VkPres
 
     if (runInterpolation)
     {
-        WaitForSingleObject(presentInfo.interpolationEvent, INFINITE);
+        posix_event_wait(&presentInfo.interpolationEvent);
 
         res = presentInterpolated(pPresentInfo, currentBackBufferIndex, needUICopy);
     }
@@ -2641,17 +2612,19 @@ VkResult FrameInterpolationSwapChainVK::queuePresent(VkQueue queue, const VkPres
         gameQueueSignal.add(presentInfo.gameSemaphore, ++gameSemaphoreValue);
 
         // present queue should wait for the game queue to be finished
-        SubmissionSemaphores presentQueueWait; // wait on the present queue
+        SubmissionSemaphores presentQueueWait;  // wait on the present queue
         presentQueueWait.add(presentInfo.gameSemaphore, gameSemaphoreValue);
 
-        // fails 
+        // fails
         FFX_ASSERT_MESSAGE(pPresentInfo->pNext == nullptr, "VkPresentInfoKHR::pNext not yet supported.");
 
-        uint32_t imageIndex = 0;
+        uint32_t    imageIndex       = 0;
         VkSemaphore acquireSemaphore = VK_NULL_HANDLE;
-        
+
         VkResult res = presentInfo.acquireNextRealImage(imageIndex, acquireSemaphore);
-        FFX_ASSERT_MESSAGE_FORMAT(res == VK_SUCCESS || res == VK_SUBOPTIMAL_KHR || res == VK_ERROR_OUT_OF_DATE_KHR || res == VK_NOT_READY || res == VK_TIMEOUT, "[queuePresent] acquiring next image failed with error %d", res);
+        FFX_ASSERT_MESSAGE_FORMAT(res == VK_SUCCESS || res == VK_SUBOPTIMAL_KHR || res == VK_ERROR_OUT_OF_DATE_KHR || res == VK_NOT_READY || res == VK_TIMEOUT,
+                                  "[queuePresent] acquiring next image failed with error %d",
+                                  res);
         if (res == VK_SUCCESS || res == VK_SUBOPTIMAL_KHR)
         {
             // composition queue should wait until the image is available to render into it
@@ -2695,16 +2668,19 @@ VkResult FrameInterpolationSwapChainVK::queuePresent(VkQueue queue, const VkPres
     // Unregister any potential command list
     registeredInterpolationCommandLists[currentBackBufferIndex] = nullptr;
     presentCount++;
-    interpolationBufferIndex = presentCount % _countof(interpolationOutputs);
+    interpolationBufferIndex = presentCount % std::size(interpolationOutputs);
 
     // update active backbuffer and block when no buffer is available
     replacementSwapBufferIndex = presentCount % gameBufferCount;
 
-    LeaveCriticalSection(&criticalSection);
+    criticalSection.unlock();
 
-    waitForSemaphoreValue(
-        presentInfo.device, presentInfo.replacementBufferSemaphore, replacementSwapBuffers[replacementSwapBufferIndex].availabilitySemaphoreValue, UINT64_MAX, presentInfo.waitCallback);
-    
+    waitForSemaphoreValue(presentInfo.device,
+                          presentInfo.replacementBufferSemaphore,
+                          replacementSwapBuffers[replacementSwapBufferIndex].availabilitySemaphoreValue,
+                          UINT64_MAX,
+                          presentInfo.waitCallback);
+
     return res;
 }
 
@@ -2713,16 +2689,18 @@ bool FrameInterpolationSwapChainVK::spawnPresenterThread()
     if (interpolationThreadHandle == NULL)
     {
         presentInfo.shutdown = false;
-        interpolationThreadHandle = CreateThread(nullptr, 0, interpolationThread, reinterpret_cast<void*>(&presentInfo), 0, nullptr);
+        pthread_create(&interpolationThreadHandle, nullptr, interpolationThread, reinterpret_cast<void*>(&presentInfo));
         FFX_ASSERT(interpolationThreadHandle != NULL);
 
         if (interpolationThreadHandle != 0)
         {
-            SetThreadPriority(interpolationThreadHandle, THREAD_PRIORITY_HIGHEST);
-            SetThreadDescription(interpolationThreadHandle, L"AMD FSR Interpolation Thread");
+            struct sched_param param;
+            param.sched_priority = 10;
+
+            pthread_setschedparam(interpolationThreadHandle, SCHED_RR, &param);
         }
 
-        SetEvent(presentInfo.interpolationEvent);
+        posix_event_set(&presentInfo.interpolationEvent);
     }
 
     return interpolationThreadHandle != NULL;
@@ -2736,9 +2714,9 @@ bool FrameInterpolationSwapChainVK::killPresenterThread()
         presentInfo.shutdown = true;
 
         // signal event to allow thread to finish
-        SetEvent(presentInfo.presentEvent);
-        WaitForSingleObject(interpolationThreadHandle, INFINITE);
-        SafeCloseHandle(interpolationThreadHandle);
+        posix_event_set(&presentInfo.presentEvent);
+        void* retval;
+        pthread_join(interpolationThreadHandle, &retval);
     }
 
     return interpolationThreadHandle == NULL;
@@ -2762,7 +2740,7 @@ uint64_t FrameInterpolationSwapChainVK::getLastPresentCount()
 
 VkCommandBuffer FrameInterpolationSwapChainVK::getInterpolationCommandList()
 {
-    EnterCriticalSection(&criticalSection);
+    criticalSection.lock();
 
     VkCommandBuffer commandBuffer = VK_NULL_HANDLE;
 
@@ -2770,7 +2748,7 @@ VkCommandBuffer FrameInterpolationSwapChainVK::getInterpolationCommandList()
     if (interpolationEnabled)
     {
         uint32_t currentBackBufferIndex = replacementSwapBufferIndex;
-        
+
         VkCommands* registeredCommands = registeredInterpolationCommandLists[currentBackBufferIndex];
 
         // drop if already existing
@@ -2788,7 +2766,7 @@ VkCommandBuffer FrameInterpolationSwapChainVK::getInterpolationCommandList()
         registeredInterpolationCommandLists[currentBackBufferIndex] = registeredCommands;
     }
 
-    LeaveCriticalSection(&criticalSection);
+    criticalSection.unlock();
 
     return commandBuffer;
 }
@@ -2803,7 +2781,7 @@ VkResult FrameInterpolationSwapChainVK::submitCompositionOnGameQueue(const Pacin
         SubmissionSemaphores toWait;
         toWait.add(presentInfo.gameSemaphore, entry.gameSemaphoreValue);
 
-        bool uiSurfaceTransfered = true; // the UI surface is already on the game queue. so there is no need to transition it
+        bool uiSurfaceTransfered = true;  // the UI surface is already on the game queue. so there is no need to transition it
 
         for (uint32_t frameType = 0; frameType < PacingData::FrameType::Count; frameType++)
         {
@@ -2815,7 +2793,14 @@ VkResult FrameInterpolationSwapChainVK::submitCompositionOnGameQueue(const Pacin
                 // unused value
                 uint32_t realSwapchainImageIndex = 0;
 
-                res = compositeSwapChainFrame(&presentInfo, &entry, (PacingData::FrameType)frameType, realSwapchainImageIndex, presentInfo.gameQueue, toWait, toSignal, uiSurfaceTransfered);
+                res = compositeSwapChainFrame(&presentInfo,
+                                              &entry,
+                                              (PacingData::FrameType)frameType,
+                                              realSwapchainImageIndex,
+                                              presentInfo.gameQueue,
+                                              toWait,
+                                              toSignal,
+                                              uiSurfaceTransfered);
                 FFX_ASSERT_MESSAGE_FORMAT(res == VK_SUCCESS, "compositeSwapChainFrame failed with error %d", res);
             }
         }
@@ -2823,7 +2808,8 @@ VkResult FrameInterpolationSwapChainVK::submitCompositionOnGameQueue(const Pacin
         // if no frame was presented, we still need to update the semaphore
         if (toWait.count > 0)
         {
-            res = presentInfo.gameQueue.submit(VK_NULL_HANDLE, toWait, SubmissionSemaphores());
+            SubmissionSemaphores ss;
+            res = presentInfo.gameQueue.submit(VK_NULL_HANDLE, toWait, ss);
         }
     }
 
@@ -2835,7 +2821,7 @@ bool FrameInterpolationSwapChainVK::verifyUiDuplicateResource()
     VkResult res = VK_SUCCESS;
 
     const VkAllocationCallbacks* pAllocator = nullptr;  // we don't have it at this point
-    
+
     VkImage                uiResource     = static_cast<VkImage>(presentInfo.currentUiSurface.resource);
     FfxResourceDescription uiResourceDesc = presentInfo.currentUiSurface.description;
 
@@ -2885,12 +2871,7 @@ bool FrameInterpolationSwapChainVK::verifyUiDuplicateResource()
             VkPhysicalDeviceMemoryProperties memProperties;
             vkGetPhysicalDeviceMemoryProperties(presentInfo.physicalDevice, &memProperties);
 
-            res = createImage(uiReplacementBuffer,
-                              info,
-                              uiResourceDesc.format,
-                              "AMD FSR Ui Doublebuffer Resource",
-                              memProperties,
-                              pAllocator);
+            res = createImage(uiReplacementBuffer, info, uiResourceDesc.format, "AMD FSR Ui Doublebuffer Resource", memProperties, pAllocator);
         }
     }
 
@@ -2952,10 +2933,8 @@ VkImageMemoryBarrier FrameInterpolationSwapChainVK::copyUiResource(VkCommandBuff
     if (transferToPresentQueue)
     {
         // NOTE: it might be possible to merge this barrier with dstBarrier above but it needs to be tracked
-        VkImageMemoryBarrier owwnershipBarrier = getImageMemoryBarrier(imageDst,
-                                                                       VK_ACCESS_SHADER_READ_BIT, VK_ACCESS_SHADER_READ_BIT,
-                                                                       VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                                                                       VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+        VkImageMemoryBarrier owwnershipBarrier = getImageMemoryBarrier(
+            imageDst, VK_ACCESS_SHADER_READ_BIT, VK_ACCESS_SHADER_READ_BIT, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
         owwnershipBarrier.srcQueueFamilyIndex = presentInfo.gameQueue.familyIndex;
         owwnershipBarrier.dstQueueFamilyIndex = presentInfo.presentQueue.familyIndex;
         postCopyBarriers.add(owwnershipBarrier);

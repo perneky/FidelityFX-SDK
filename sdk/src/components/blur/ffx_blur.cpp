@@ -1,7 +1,7 @@
 // This file is part of the FidelityFX SDK.
 //
 // Copyright (C) 2024 Advanced Micro Devices, Inc.
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files(the "Software"), to deal
 // in the Software without restriction, including without limitation the rights
@@ -20,10 +20,10 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-#include <string>       // for wstring
-#include <string.h>     // for memset
-#include <stdlib.h>     // for _countof
-#include <cmath>        // for fabs, abs, sinf, sqrt, etc.
+#include <string>    // for wstring
+#include <string.h>  // for memset
+#include <stdlib.h>  // for std::size
+#include <cmath>     // for fabs, abs, sinf, sqrt, etc.
 
 #include <FidelityFX/host/ffx_blur.h>
 #include <FidelityFX/gpu/ffx_core.h>
@@ -55,7 +55,7 @@ static const ResourceBinding cbResourceBindingTable[] = {
 static wchar_t* getKernelSizeString(wchar_t* buffer, FfxBlurKernelSize kernelSize)
 {
 #pragma warning(push)
-#pragma warning(disable : 4996) // Suppress the deprecation warning
+#pragma warning(disable : 4996)  // Suppress the deprecation warning
     switch (kernelSize)
     {
     case FFX_BLUR_KERNEL_SIZE_3x3:
@@ -103,12 +103,12 @@ static FfxErrorCode patchResourceBindings(FfxPipelineState* inoutPipeline)
     for (uint32_t srvIndex = 0; srvIndex < inoutPipeline->srvTextureCount; ++srvIndex)
     {
         int32_t mapIndex = 0;
-        for (mapIndex = 0; mapIndex < _countof(srvTextureBindingTable); ++mapIndex)
+        for (mapIndex = 0; mapIndex < std::size(srvTextureBindingTable); ++mapIndex)
         {
             if (0 == wcscmp(srvTextureBindingTable[mapIndex].name, inoutPipeline->srvTextureBindings[srvIndex].name))
                 break;
         }
-        if (mapIndex == _countof(srvTextureBindingTable))
+        if (mapIndex == std::size(srvTextureBindingTable))
             return FFX_ERROR_INVALID_ARGUMENT;
 
         inoutPipeline->srvTextureBindings[srvIndex].resourceIdentifier = srvTextureBindingTable[mapIndex].index;
@@ -117,12 +117,12 @@ static FfxErrorCode patchResourceBindings(FfxPipelineState* inoutPipeline)
     for (uint32_t uavIndex = 0; uavIndex < inoutPipeline->uavTextureCount; ++uavIndex)
     {
         int32_t mapIndex = 0;
-        for (mapIndex = 0; mapIndex < _countof(uavTextureBindingTable); ++mapIndex)
+        for (mapIndex = 0; mapIndex < std::size(uavTextureBindingTable); ++mapIndex)
         {
             if (0 == wcscmp(uavTextureBindingTable[mapIndex].name, inoutPipeline->uavTextureBindings[uavIndex].name))
                 break;
         }
-        if (mapIndex == _countof(uavTextureBindingTable))
+        if (mapIndex == std::size(uavTextureBindingTable))
             return FFX_ERROR_INVALID_ARGUMENT;
 
         inoutPipeline->uavTextureBindings[uavIndex].resourceIdentifier = uavTextureBindingTable[mapIndex].index;
@@ -131,12 +131,12 @@ static FfxErrorCode patchResourceBindings(FfxPipelineState* inoutPipeline)
     for (uint32_t cbIndex = 0; cbIndex < inoutPipeline->constCount; ++cbIndex)
     {
         int32_t mapIndex = 0;
-        for (mapIndex = 0; mapIndex < _countof(cbResourceBindingTable); ++mapIndex)
+        for (mapIndex = 0; mapIndex < std::size(cbResourceBindingTable); ++mapIndex)
         {
             if (0 == wcscmp(cbResourceBindingTable[mapIndex].name, inoutPipeline->constantBufferBindings[cbIndex].name))
                 break;
         }
-        if (mapIndex == _countof(cbResourceBindingTable))
+        if (mapIndex == std::size(cbResourceBindingTable))
             return FFX_ERROR_INVALID_ARGUMENT;
 
         inoutPipeline->constantBufferBindings[cbIndex].resourceIdentifier = cbResourceBindingTable[mapIndex].index;
@@ -145,11 +145,11 @@ static FfxErrorCode patchResourceBindings(FfxPipelineState* inoutPipeline)
     return FFX_OK;
 }
 
-static uint32_t getPipelinePermutationFlags(
-    FfxBlurKernelPermutation kernelPermutation,
-    FfxBlurKernelSize kernelSize,
-    FfxBlurFloatPrecision desiredFloatPrecision, bool fp16Supported,
-    bool canForceWave64)
+static uint32_t getPipelinePermutationFlags(FfxBlurKernelPermutation kernelPermutation,
+                                            FfxBlurKernelSize        kernelSize,
+                                            FfxBlurFloatPrecision    desiredFloatPrecision,
+                                            bool                     fp16Supported,
+                                            bool                     canForceWave64)
 {
     // work out what permutation to load.
     uint32_t flags = 0;
@@ -201,8 +201,7 @@ static uint32_t getPipelinePermutationFlags(
         break;
     }
 
-    if (desiredFloatPrecision == FFX_BLUR_FLOAT_PRECISION_16BIT
-        && fp16Supported)
+    if (desiredFloatPrecision == FFX_BLUR_FLOAT_PRECISION_16BIT && fp16Supported)
     {
         flags |= BLUR_SHADER_PERMUTATION_ALLOW_FP16;
     }
@@ -235,26 +234,27 @@ static uint32_t countNumberOfSetBits(uint32_t bits)
 
 #else
 
-#define FFX_ASSERT_OR_RETURN(condition, falseValue) if (!(condition)) return falseValue;
+#define FFX_ASSERT_OR_RETURN(condition, falseValue) \
+    if (!(condition))                               \
+        return falseValue;
 
 #endif
-
 
 static FfxErrorCode createPipelineStateObjects(FfxBlurContext_Private* context)
 {
     FFX_ASSERT(context);
 
-    FfxPipelineDescription pipelineDescription  = {};
-    pipelineDescription.contextFlags = 0;
+    FfxPipelineDescription pipelineDescription = {};
+    pipelineDescription.contextFlags           = 0;
 
     // Samplers
     pipelineDescription.samplerCount = 0;
-    pipelineDescription.samplers = nullptr;
+    pipelineDescription.samplers     = nullptr;
 
     // Root constants
     pipelineDescription.rootConstantBufferCount = 1;
-    FfxRootConstantDescription rootConstantDesc = { sizeof(BlurConstants) / sizeof(uint32_t), FFX_BIND_COMPUTE_SHADER_STAGE };
-    pipelineDescription.rootConstants = &rootConstantDesc;
+    FfxRootConstantDescription rootConstantDesc = {sizeof(BlurConstants) / sizeof(uint32_t), FFX_BIND_COMPUTE_SHADER_STAGE};
+    pipelineDescription.rootConstants           = &rootConstantDesc;
 
     FfxDeviceCapabilities& capabilities = context->deviceCapabilities;
     // Setup a few options used to determine permutation flags
@@ -277,14 +277,13 @@ static FfxErrorCode createPipelineStateObjects(FfxBlurContext_Private* context)
 
     FFX_ASSERT_OR_RETURN(numberOfKernelSizes <= FFX_BLUR_KERNEL_SIZE_COUNT && numberOfKernelSizes != 0, FFX_ERROR_INVALID_ARGUMENT);
 
-    context->pBlurPipelines =
-        (FfxPipelineState*)calloc(1u, numberOfKernelSizes * numberOfKernelPermutations * sizeof(FfxPipelineState));
+    context->pBlurPipelines = (FfxPipelineState*)calloc(1u, numberOfKernelSizes * numberOfKernelPermutations * sizeof(FfxPipelineState));
 
     FFX_RETURN_ON_ERROR(context->pBlurPipelines, FFX_ERROR_OUT_OF_MEMORY);
 
     context->numKernelSizes = numberOfKernelSizes;
 
-    uint32_t curPipelineIndex = 0;
+    uint32_t curPipelineIndex     = 0;
     uint32_t curKernelPermutation = FFX_BLUR_KERNEL_PERMUTATION_0;
     for (uint32_t kernPermIndex = 0; kernPermIndex < FFX_BLUR_KERNEL_PERMUTATION_COUNT; ++kernPermIndex, curKernelPermutation <<= 1)
     {
@@ -295,14 +294,14 @@ static FfxErrorCode createPipelineStateObjects(FfxBlurContext_Private* context)
             {
                 if (curKernelSize & context->contextDescription.kernelSizes)
                 {
-                    wcscpy_s(pipelineDescription.name, L"BLUR-BLUR_");
+                    wcscpy(pipelineDescription.name, L"BLUR-BLUR_");
 
                     wchar_t kernelPermStr[32];
                     swprintf_s(kernelPermStr, L"PERM%d_", kernPermIndex);
 
                     wcscat_s(pipelineDescription.name, kernelPermStr);
 
-                    wchar_t kernel[10]; // 3x3 through 21x21
+                    wchar_t kernel[10];  // 3x3 through 21x21
                     getKernelSizeString(kernel, (FfxBlurKernelSize)curKernelSize);
 
                     wcscat_s(pipelineDescription.name, kernel);
@@ -313,12 +312,11 @@ static FfxErrorCode createPipelineStateObjects(FfxBlurContext_Private* context)
                         &context->contextDescription.backendInterface,
                         FFX_EFFECT_BLUR,
                         FFX_BLUR_PASS_BLUR,
-                        getPipelinePermutationFlags(
-                            (FfxBlurKernelPermutation)curKernelPermutation,
-                            (FfxBlurKernelSize)curKernelSize,
-                            context->contextDescription.floatPrecision,
-                            fp16Supported,
-                            canForceWave64),
+                        getPipelinePermutationFlags((FfxBlurKernelPermutation)curKernelPermutation,
+                                                    (FfxBlurKernelSize)curKernelSize,
+                                                    context->contextDescription.floatPrecision,
+                                                    fp16Supported,
+                                                    canForceWave64),
                         &pipelineDescription,
                         context->effectContextId,
                         pBlurPipeline));
@@ -359,18 +357,13 @@ static FfxErrorCode blurCreate(FfxBlurContext_Private* context, const FfxBlurCon
     context->blurConstants.num32BitEntries = sizeof(BlurConstants) / sizeof(uint32_t);
 
     // Create the context.
-    FfxErrorCode errorCode =
-        context->contextDescription.backendInterface.fpCreateBackendContext(
-            &context->contextDescription.backendInterface, 
-            FFX_EFFECT_BLUR,
-            nullptr,
-            &context->effectContextId);
+    FfxErrorCode errorCode = context->contextDescription.backendInterface.fpCreateBackendContext(
+        &context->contextDescription.backendInterface, FFX_EFFECT_BLUR, nullptr, &context->effectContextId);
     FFX_RETURN_ON_ERROR(errorCode == FFX_OK, errorCode);
 
     // Call out for device caps.
-    errorCode = context->contextDescription.backendInterface.fpGetDeviceCapabilities(
-        &context->contextDescription.backendInterface,
-        &context->deviceCapabilities);
+    errorCode =
+        context->contextDescription.backendInterface.fpGetDeviceCapabilities(&context->contextDescription.backendInterface, &context->deviceCapabilities);
     FFX_RETURN_ON_ERROR(errorCode == FFX_OK, errorCode);
 
     // Clear the SRV resources to NULL.
@@ -392,12 +385,8 @@ FfxErrorCode ffxBlurContextCreate(FfxBlurContext* context, const FfxBlurContextD
     memset(context, 0, sizeof(*context));
 
     // Check pointers are valid.
-    FFX_RETURN_ON_ERROR(
-        context,
-        FFX_ERROR_INVALID_POINTER);
-    FFX_RETURN_ON_ERROR(
-        contextDescription,
-        FFX_ERROR_INVALID_POINTER);
+    FFX_RETURN_ON_ERROR(context, FFX_ERROR_INVALID_POINTER);
+    FFX_RETURN_ON_ERROR(contextDescription, FFX_ERROR_INVALID_POINTER);
 
     // Validate that all callbacks are set for the interface
     FFX_RETURN_ON_ERROR(contextDescription->backendInterface.fpGetSDKVersion, FFX_ERROR_INCOMPLETE_INTERFACE);
@@ -406,8 +395,8 @@ FfxErrorCode ffxBlurContextCreate(FfxBlurContext* context, const FfxBlurContextD
     FFX_RETURN_ON_ERROR(contextDescription->backendInterface.fpDestroyBackendContext, FFX_ERROR_INCOMPLETE_INTERFACE);
 
     // If a scratch buffer is declared, then we must have a size
-    if (contextDescription->backendInterface.scratchBuffer) {
-
+    if (contextDescription->backendInterface.scratchBuffer)
+    {
         FFX_RETURN_ON_ERROR(contextDescription->backendInterface.scratchBufferSize, FFX_ERROR_INCOMPLETE_INTERFACE);
     }
 
@@ -416,7 +405,7 @@ FfxErrorCode ffxBlurContextCreate(FfxBlurContext* context, const FfxBlurContextD
 
     // create the context.
     FfxBlurContext_Private* contextPrivate = (FfxBlurContext_Private*)(context);
-    const FfxErrorCode errorCode = blurCreate(contextPrivate, contextDescription);
+    const FfxErrorCode      errorCode      = blurCreate(contextPrivate, contextDescription);
 
     return errorCode;
 }
@@ -444,48 +433,41 @@ static FfxErrorCode blurRelease(FfxBlurContext_Private* context)
 
     // Unregister resources not created internally
     context->srvResources[FFX_BLUR_RESOURCE_IDENTIFIER_INPUT_SRC] = {FFX_BLUR_RESOURCE_IDENTIFIER_NULL};
-    context->srvResources[FFX_BLUR_RESOURCE_IDENTIFIER_OUTPUT] = {FFX_BLUR_RESOURCE_IDENTIFIER_NULL};
+    context->srvResources[FFX_BLUR_RESOURCE_IDENTIFIER_OUTPUT]    = {FFX_BLUR_RESOURCE_IDENTIFIER_NULL};
 
     context->uavResources[FFX_BLUR_RESOURCE_IDENTIFIER_INPUT_SRC] = {FFX_BLUR_RESOURCE_IDENTIFIER_NULL};
-    context->uavResources[FFX_BLUR_RESOURCE_IDENTIFIER_OUTPUT] = {FFX_BLUR_RESOURCE_IDENTIFIER_NULL};
+    context->uavResources[FFX_BLUR_RESOURCE_IDENTIFIER_OUTPUT]    = {FFX_BLUR_RESOURCE_IDENTIFIER_NULL};
 
     // Destroy the context
-    context->contextDescription.backendInterface.fpDestroyBackendContext(
-        &context->contextDescription.backendInterface, context->effectContextId);
+    context->contextDescription.backendInterface.fpDestroyBackendContext(&context->contextDescription.backendInterface, context->effectContextId);
 
     return FFX_OK;
 }
 
 FfxErrorCode ffxBlurContextDestroy(FfxBlurContext* context)
 {
-    FFX_RETURN_ON_ERROR(
-        context,
-        FFX_ERROR_INVALID_POINTER);
+    FFX_RETURN_ON_ERROR(context, FFX_ERROR_INVALID_POINTER);
 
     // Destroy the context.
     FfxBlurContext_Private* contextPrivate = (FfxBlurContext_Private*)(context);
-    const FfxErrorCode errorCode = blurRelease(contextPrivate);
+    const FfxErrorCode      errorCode      = blurRelease(contextPrivate);
     return errorCode;
 }
 
-static void scheduleDispatch(FfxBlurContext_Private* context,
-                             const FfxPipelineState* pipeline,
-                             uint32_t                dispatchX,
-                             uint32_t                dispatchY,
-                             uint32_t                dispatchZ)
+static void scheduleDispatch(FfxBlurContext_Private* context, const FfxPipelineState* pipeline, uint32_t dispatchX, uint32_t dispatchY, uint32_t dispatchZ)
 {
     FfxGpuJobDescription dispatchJob = {FFX_GPU_JOB_COMPUTE};
-    wcscpy_s(dispatchJob.jobLabel, pipeline->name);
+    wcscpy(dispatchJob.jobLabel, pipeline->name);
 
     for (uint32_t currentShaderResourceViewIndex = 0; currentShaderResourceViewIndex < pipeline->srvTextureCount; ++currentShaderResourceViewIndex)
     {
-        const uint32_t            currentResourceId        = pipeline->srvTextureBindings[currentShaderResourceViewIndex].resourceIdentifier;
-        const FfxResourceInternal currentResource          = context->srvResources[currentResourceId];
+        const uint32_t            currentResourceId = pipeline->srvTextureBindings[currentShaderResourceViewIndex].resourceIdentifier;
+        const FfxResourceInternal currentResource   = context->srvResources[currentResourceId];
 
         dispatchJob.computeJobDescriptor.srvTextures[currentShaderResourceViewIndex].resource = currentResource;
 #ifdef FFX_DEBUG
-        wcscpy_s(dispatchJob.computeJobDescriptor.srvTextures[currentShaderResourceViewIndex].name,
-            pipeline->srvTextureBindings[currentShaderResourceViewIndex].name);
+        wcscpy(dispatchJob.computeJobDescriptor.srvTextures[currentShaderResourceViewIndex].name,
+               pipeline->srvTextureBindings[currentShaderResourceViewIndex].name);
 #endif
     }
 
@@ -497,10 +479,10 @@ static void scheduleDispatch(FfxBlurContext_Private* context,
         const FfxResourceInternal currentResource = context->uavResources[currentResourceId];
 
         dispatchJob.computeJobDescriptor.uavTextures[uavEntry].resource = currentResource;
-        dispatchJob.computeJobDescriptor.uavTextures[uavEntry++].mip = 0;
+        dispatchJob.computeJobDescriptor.uavTextures[uavEntry++].mip    = 0;
 #ifdef FFX_DEBUG
-        wcscpy_s(dispatchJob.computeJobDescriptor.uavTextures[currentUnorderedAccessViewIndex].name,
-            pipeline->uavTextureBindings[currentUnorderedAccessViewIndex].name);
+        wcscpy(dispatchJob.computeJobDescriptor.uavTextures[currentUnorderedAccessViewIndex].name,
+               pipeline->uavTextureBindings[currentUnorderedAccessViewIndex].name);
 #endif
     }
 
@@ -511,21 +493,18 @@ static void scheduleDispatch(FfxBlurContext_Private* context,
 
     // Only 1 constant buffer
 #ifdef FFX_DEBUG
-    wcscpy_s(dispatchJob.computeJobDescriptor.cbNames[0], pipeline->constantBufferBindings[0].name);
+    wcscpy(dispatchJob.computeJobDescriptor.cbNames[0], pipeline->constantBufferBindings[0].name);
 #endif
     dispatchJob.computeJobDescriptor.cbs[0] = context->blurConstants;
 
-
-    context->contextDescription.backendInterface.fpScheduleGpuJob(
-        &context->contextDescription.backendInterface, &dispatchJob);
+    context->contextDescription.backendInterface.fpScheduleGpuJob(&context->contextDescription.backendInterface, &dispatchJob);
 }
 
-static uint32_t getPipelineIndex(
-    FfxBlurKernelPermutations kernelPerms,
-    FfxBlurKernelPermutation kernelPerm,
-    FfxUInt32 numKernelSizes,
-    FfxBlurKernelSizes kernelSizes,
-    FfxBlurKernelSize kernelSize)
+static uint32_t getPipelineIndex(FfxBlurKernelPermutations kernelPerms,
+                                 FfxBlurKernelPermutation  kernelPerm,
+                                 FfxUInt32                 numKernelSizes,
+                                 FfxBlurKernelSizes        kernelSizes,
+                                 FfxBlurKernelSize         kernelSize)
 {
     uint32_t kernelPermValue = static_cast<uint32_t>(kernelPerm);
 
@@ -534,12 +513,12 @@ static uint32_t getPipelineIndex(
     {
         if (kernelPermValue & 1)
         {
-            uint32_t kernelSizeValue = static_cast<uint32_t>(kernelSize);
+            uint32_t           kernelSizeValue    = static_cast<uint32_t>(kernelSize);
             FfxBlurKernelSizes kernelSizesCounter = kernelSizes;
             while (kernelSizesCounter > 0)
             {
                 if (kernelSizeValue & 1)
-                    break; // We found it.
+                    break;  // We found it.
 
                 if (kernelSizesCounter & 1)
                     ++pipelineIndex;
@@ -548,7 +527,7 @@ static uint32_t getPipelineIndex(
                 kernelSizeValue >>= 1;
             }
 
-            break; // If we get here we found it or something is wrong.
+            break;  // If we get here we found it or something is wrong.
         }
         else if (kernelPerms & 1)
         {
@@ -569,15 +548,15 @@ static FfxErrorCode blurDispatch(FfxBlurContext_Private* context, const FfxBlurD
     FfxCommandList commandList = params->commandList;
 
     // Register resources for frame
+    context->contextDescription.backendInterface.fpRegisterResource(&context->contextDescription.backendInterface,
+                                                                    &params->input,
+                                                                    context->effectContextId,
+                                                                    &context->srvResources[FFX_BLUR_RESOURCE_IDENTIFIER_INPUT_SRC]);
     context->contextDescription.backendInterface.fpRegisterResource(
-        &context->contextDescription.backendInterface, &params->input, context->effectContextId,
-        &context->srvResources[FFX_BLUR_RESOURCE_IDENTIFIER_INPUT_SRC]);
-    context->contextDescription.backendInterface.fpRegisterResource(
-        &context->contextDescription.backendInterface, &params->output, context->effectContextId,
-        &context->uavResources[FFX_BLUR_RESOURCE_IDENTIFIER_OUTPUT]);
+        &context->contextDescription.backendInterface, &params->output, context->effectContextId, &context->uavResources[FFX_BLUR_RESOURCE_IDENTIFIER_OUTPUT]);
 
     BlurConstants constants;
-    constants.width = params->inputAndOutputSize.width;
+    constants.width  = params->inputAndOutputSize.width;
     constants.height = params->inputAndOutputSize.height;
 
     // FFX-Blur uses persistent waves - A single row of work groups loop over the image.
@@ -587,16 +566,16 @@ static FfxErrorCode blurDispatch(FfxBlurContext_Private* context, const FfxBlurD
 
     context->contextDescription.backendInterface.fpStageConstantBufferDataFunc(
         &context->contextDescription.backendInterface, &constants, sizeof(BlurConstants), &context->blurConstants);
-    
+
     // Validate that specified kernel permutation and size were used during FFX Blur Context creation.
     FFX_ASSERT_OR_RETURN(context->contextDescription.kernelPermutations & params->kernelPermutation, FFX_ERROR_INVALID_ENUM);
     FFX_ASSERT_OR_RETURN(context->contextDescription.kernelSizes & params->kernelSize, FFX_ERROR_INVALID_ENUM);
 
-    uint32_t pipelineIndex =
-        getPipelineIndex(
-            context->contextDescription.kernelPermutations, params->kernelPermutation,
-            context->numKernelSizes,
-            context->contextDescription.kernelSizes, params->kernelSize);
+    uint32_t pipelineIndex = getPipelineIndex(context->contextDescription.kernelPermutations,
+                                              params->kernelPermutation,
+                                              context->numKernelSizes,
+                                              context->contextDescription.kernelSizes,
+                                              params->kernelSize);
 
     scheduleDispatch(context, &context->pBlurPipelines[pipelineIndex], dispatchX, dispatchY, dispatchZ);
 
@@ -604,9 +583,7 @@ static FfxErrorCode blurDispatch(FfxBlurContext_Private* context, const FfxBlurD
     context->contextDescription.backendInterface.fpExecuteGpuJobs(&context->contextDescription.backendInterface, commandList, context->effectContextId);
 
     // Release dynamic resources
-    context->contextDescription.backendInterface.fpUnregisterResources(&context->contextDescription.backendInterface, 
-        commandList, 
-        context->effectContextId);
+    context->contextDescription.backendInterface.fpUnregisterResources(&context->contextDescription.backendInterface, commandList, context->effectContextId);
 
     return FFX_OK;
 }
@@ -616,7 +593,7 @@ FfxErrorCode ffxBlurContextDispatch(FfxBlurContext* context, const FfxBlurDispat
     // check pointers are valid
     FFX_RETURN_ON_ERROR(context, FFX_ERROR_INVALID_POINTER);
     FFX_RETURN_ON_ERROR(dispatchDescription, FFX_ERROR_INVALID_POINTER);
-    
+
     FfxBlurContext_Private* contextPrivate = (FfxBlurContext_Private*)(context);
 
     FFX_RETURN_ON_ERROR(contextPrivate->device, FFX_ERROR_NULL_DEVICE);

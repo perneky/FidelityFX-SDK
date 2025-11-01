@@ -1,7 +1,7 @@
 // This file is part of the FidelityFX SDK.
 //
 // Copyright (C) 2024 Advanced Micro Devices, Inc.
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files(the "Software"), to deal
 // in the Software without restriction, including without limitation the rights
@@ -21,7 +21,7 @@
 // THE SOFTWARE.
 
 #if defined(_WINDOWS)
-    
+
 #include "core/win/framework_win.h"
 #include "core/win/uibackend_win.h"
 
@@ -54,8 +54,8 @@ namespace cauldron
         return new UIBackendInternal();
     }
 
-    UIBackendInternal::UIBackendInternal() :
-        UIBackend()
+    UIBackendInternal::UIBackendInternal()
+        : UIBackend()
     {
         // Init ImGui basics
         m_pImGuiContext = ImGui::CreateContext();
@@ -66,7 +66,9 @@ namespace cauldron
 
         // Init windows/graphics back end for rendering with ImGui
         ImGuiIO& io = ImGui::GetIO();
-        CauldronAssert(ASSERT_CRITICAL, io.ImeWindowHandle == 0 && io.BackendRendererUserData == nullptr && io.BackendPlatformUserData == nullptr, L"Already initialized a platform or rendering back end!");
+        CauldronAssert(ASSERT_CRITICAL,
+                       io.ImeWindowHandle == 0 && io.BackendRendererUserData == nullptr && io.BackendPlatformUserData == nullptr,
+                       L"Already initialized a platform or rendering back end!");
 
         // On windows, we will use the win32 backend as it requires hijacking input and a few other things.
         // However, we will not use the rendering backend and elect to have a cauldron specific back end for rendering
@@ -81,18 +83,18 @@ namespace cauldron
         io.BackendFlags |= ImGuiBackendFlags_RendererHasVtxOffset;  // We can honor the ImDrawCmd::VtxOffset field, allowing for large meshes.
 
         // Load font to use (handled on a background thread)
-        std::function<void(void*)> loadFont = [this](void*) { this->LoadUIFont(); };
+        std::function<void(void*)> loadFont             = [this](void*) { this->LoadUIFont(); };
         std::function<void(void*)> loadCompleteCallback = [this](void*) { this->UIFontLoadComplete(); };
-        TaskCompletionCallback* pCompletionCallback = new TaskCompletionCallback(Task(loadCompleteCallback));
-        Task fontLoadTask(loadFont, nullptr, pCompletionCallback);
+        TaskCompletionCallback*    pCompletionCallback  = new TaskCompletionCallback(Task(loadCompleteCallback));
+        Task                       fontLoadTask(loadFont, nullptr, pCompletionCallback);
         GetTaskManager()->AddTask(fontLoadTask);
     }
 
     UIBackendInternal::~UIBackendInternal()
     {
         // Shutdown render back end
-        ImGuiIO& io = ImGui::GetIO();
-        io.BackendRendererName = nullptr;
+        ImGuiIO& io                = ImGui::GetIO();
+        io.BackendRendererName     = nullptr;
         io.BackendRendererUserData = nullptr;
 
         // Shut down windows back end
@@ -122,7 +124,7 @@ namespace cauldron
 
         // Fix up font size based on scale factor
         DEVICE_SCALE_FACTOR scaleFactor = GetScaleFactorForDevice(DEVICE_PRIMARY);
-        float textScale = scaleFactor / 100.f;
+        float               textScale   = scaleFactor / 100.f;
 
         // Get default (embedded) font
         ImFontConfig font_cfg;
@@ -131,13 +133,13 @@ namespace cauldron
 
         // Fetch the font data and put it in a memory texture data block for copy to texture
         unsigned char* pixels;
-        int width, height;
+        int            width, height;
         io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
         MemTextureDataBlock* pDataBlock = new MemTextureDataBlock(reinterpret_cast<char*>(pixels));
 
         // Create the font texture
         TextureDesc fontDesc = TextureDesc::Tex2D(L"UIFontTexture", ResourceFormat::RGBA8_UNORM, width, height, 1, 1);
-        m_pFontTexture = GetDynamicResourcePool()->CreateTexture(&fontDesc, ResourceState::CopyDest);
+        m_pFontTexture       = GetDynamicResourcePool()->CreateTexture(&fontDesc, ResourceState::CopyDest);
         CauldronAssert(ASSERT_ERROR, m_pFontTexture, L"Could not create the font texture for UI");
 
         if (m_pFontTexture)
@@ -146,7 +148,8 @@ namespace cauldron
             const_cast<Texture*>(m_pFontTexture)->CopyData(pDataBlock);
 
             // Once done, auto-enqueue a barrier for start of next frame so it's usable
-            Barrier textureTransition = Barrier::Transition(m_pFontTexture->GetResource(), ResourceState::CopyDest, ResourceState::PixelShaderResource | ResourceState::NonPixelShaderResource);
+            Barrier textureTransition = Barrier::Transition(
+                m_pFontTexture->GetResource(), ResourceState::CopyDest, ResourceState::PixelShaderResource | ResourceState::NonPixelShaderResource);
             GetDevice()->ExecuteResourceTransitionImmediate(1, &textureTransition);
         }
 
@@ -156,11 +159,12 @@ namespace cauldron
     void UIBackendInternal::UIFontLoadComplete()
     {
         // Make sure everything has been initialized before trying to fetch the ui render module
-        while (!GetFramework()->IsRunning()) {}
+        while (!GetFramework()->IsRunning())
+        {
+        }
 
         // Pass along the initialized font texture to the UI render module for parameter binding
-        RenderModule*  pRenderModule = GetFramework()->GetRenderModule("UIRenderModule");
-
+        RenderModule* pRenderModule = GetFramework()->GetRenderModule("UIRenderModule");
 
         CauldronAssert(ASSERT_CRITICAL, pRenderModule, L"Could not find UI render module to load font into");
         static_cast<UIRenderModule*>(pRenderModule)->SetFontResourceTexture(m_pFontTexture);
@@ -185,7 +189,7 @@ namespace cauldron
     }
 
     // Helper to build filter buttons on the output UI
-    void UIBackendInternal::OutputFilterButton(char* pString, uint32_t filterIndex, int32_t borderSize, bool sameLine/*=false*/)
+    void UIBackendInternal::OutputFilterButton(char* pString, uint32_t filterIndex, int32_t borderSize, bool sameLine /*=false*/)
     {
         if (sameLine)
             ImGui::SameLine();
@@ -284,13 +288,13 @@ namespace cauldron
     void UIBackendInternal::BuildPerfDialog(Vec2 uiscale)
     {
         // Setup tab frame work (internal elements provided by registered components (except for the scene tab)
-        const Framework* pFwrk = GetFramework();
-        const Device* pDevice = GetDevice();
+        const Framework* pFwrk   = GetFramework();
+        const Device*    pDevice = GetDevice();
 
         // Gather stats for the frame and keep track in min/max
-        constexpr size_t c_NumFrames = 128;
-        static float s_CPUFrameTimes[c_NumFrames] = { 0 };
-        static float s_GPUFrameTimes[c_NumFrames] = { 0 };
+        constexpr size_t c_NumFrames                  = 128;
+        static float     s_CPUFrameTimes[c_NumFrames] = {0};
+        static float     s_GPUFrameTimes[c_NumFrames] = {0};
 
         // Gather stats for averages
         struct TimingTotals
@@ -298,26 +302,29 @@ namespace cauldron
             std::chrono::nanoseconds TotalTime;
             std::wstring             Label;
         };
-        static std::vector<TimingTotals>   s_CPUTotals = {};
-        static std::vector<TimingTotals>   s_GPUTotals = {};
-        static int64_t                    s_CPUFrameTotals = 0;
-        static int64_t                    s_GPUFrameTotals = 0;
-        static int64_t                    s_NumGatheredFrames = 0;
+        static std::vector<TimingTotals> s_CPUTotals         = {};
+        static std::vector<TimingTotals> s_GPUTotals         = {};
+        static int64_t                   s_CPUFrameTotals    = 0;
+        static int64_t                   s_GPUFrameTotals    = 0;
+        static int64_t                   s_NumGatheredFrames = 0;
 
         // Track highest frame rate and determine the max value of the graph based on the measured highest value
-        static float s_HighestRecentGPUTime = 0.0f;
-        static float s_HighestRecentCPUTime = 0.0f;
-        constexpr int32_t c_FrameTimeGraphMaxFPS[] = { 800, 240, 120, 90, 60, 45, 30, 15, 10, 5, 4, 3, 2, 1 };
+        static float      s_HighestRecentGPUTime   = 0.0f;
+        static float      s_HighestRecentCPUTime   = 0.0f;
+        constexpr int32_t c_FrameTimeGraphMaxFPS[] = {800, 240, 120, 90, 60, 45, 30, 15, 10, 5, 4, 3, 2, 1};
         // All frame information is in nanoseconds, conversion needed to whatever scale used (default to milliseconds)
-        static float  s_FrameTimeGraphMaxCPUValues[_countof(c_FrameTimeGraphMaxFPS)] = { 0 };
-        static float  s_FrameTimeGraphMaxGPUValues[_countof(c_FrameTimeGraphMaxFPS)] = { 0 };
-        for (int32_t i = 0; i < _countof(c_FrameTimeGraphMaxFPS); ++i) { s_FrameTimeGraphMaxCPUValues[i] = s_FrameTimeGraphMaxGPUValues[i] = static_cast<float>(g_NanosecondsPerSecond) / c_FrameTimeGraphMaxFPS[i]; }
+        static float s_FrameTimeGraphMaxCPUValues[std::size(c_FrameTimeGraphMaxFPS)] = {0};
+        static float s_FrameTimeGraphMaxGPUValues[std::size(c_FrameTimeGraphMaxFPS)] = {0};
+        for (int32_t i = 0; i < std::size(c_FrameTimeGraphMaxFPS); ++i)
+        {
+            s_FrameTimeGraphMaxCPUValues[i] = s_FrameTimeGraphMaxGPUValues[i] = static_cast<float>(g_NanosecondsPerSecond) / c_FrameTimeGraphMaxFPS[i];
+        }
 
         // Scrolling data and average FPS computing
-        const std::vector<TimingInfo>& cpuTimings = GetProfiler()->GetCPUTimings();
-        const std::vector<TimingInfo>& gpuTimings = GetProfiler()->GetGPUTimings();
-        const int64_t CPUTickCount = GetProfiler()->GetCPUFrameTicks();
-        const int64_t GPUTickCount = GetProfiler()->GetGPUFrameTicks();
+        const std::vector<TimingInfo>& cpuTimings   = GetProfiler()->GetCPUTimings();
+        const std::vector<TimingInfo>& gpuTimings   = GetProfiler()->GetGPUTimings();
+        const int64_t                  CPUTickCount = GetProfiler()->GetCPUFrameTicks();
+        const int64_t                  GPUTickCount = GetProfiler()->GetGPUFrameTicks();
 
         const bool cpuTimeStampsAvailable = cpuTimings.size() > 1;
         const bool gpuTimeStampsAvailable = gpuTimings.size() > 1;
@@ -335,13 +342,13 @@ namespace cauldron
         if (cpuTimeStampsAvailable)
         {
             s_CPUFrameTimes[c_NumFrames - 1] = (float)CPUTickCount;
-            s_HighestRecentCPUTime = std::max<float>(s_HighestRecentCPUTime, s_CPUFrameTimes[c_NumFrames - 1]);
+            s_HighestRecentCPUTime           = std::max<float>(s_HighestRecentCPUTime, s_CPUFrameTimes[c_NumFrames - 1]);
         }
 
         if (gpuTimeStampsAvailable)
         {
             s_GPUFrameTimes[c_NumFrames - 1] = (float)GPUTickCount;
-            s_HighestRecentGPUTime = std::max<float>(s_HighestRecentGPUTime, s_GPUFrameTimes[c_NumFrames - 1]);
+            s_HighestRecentGPUTime           = std::max<float>(s_HighestRecentGPUTime, s_GPUFrameTimes[c_NumFrames - 1]);
         }
 
         // Update runtime averages
@@ -356,12 +363,12 @@ namespace cauldron
             for (size_t i = 0; i < cpuTimings.size(); ++i)
             {
                 s_CPUTotals[i].TotalTime = cpuTimings[i].EndTime - cpuTimings[i].StartTime;
-                s_CPUTotals[i].Label = cpuTimings[i].Label;
+                s_CPUTotals[i].Label     = cpuTimings[i].Label;
             }
             for (size_t i = 0; i < gpuTimings.size(); ++i)
             {
                 s_GPUTotals[i].TotalTime = gpuTimings[i].EndTime - gpuTimings[i].StartTime;
-                s_GPUTotals[i].Label = gpuTimings[i].Label;
+                s_GPUTotals[i].Label     = gpuTimings[i].Label;
             }
             s_NumGatheredFrames = 1;
         }
@@ -388,7 +395,7 @@ namespace cauldron
                     }
                 }
             }
-            
+
             // If still good, do GPU
             dataValid = dataValid && (s_GPUTotals.size() == gpuTimings.size());
             if (dataValid)
@@ -420,20 +427,21 @@ namespace cauldron
         }
 
         // Use slowest between gpu & cpu frame times as FPS tracker
-        const float& frameTimeNanoSecondsCPU = s_CPUFrameTimes[c_NumFrames - 1];
-        const float& frameTimeNanoSecondsGPU = s_GPUFrameTimes[c_NumFrames - 1];
-        const float  frameTimeMicroSeconds = frameTimeNanoSecondsCPU * 0.001f;
-        const float  frameTimeMilliSeconds = frameTimeMicroSeconds * 0.001f;
-        const int32_t fpsCPU = cpuTimeStampsAvailable ? static_cast<int32_t>(g_NanosecondsPerSecond / frameTimeNanoSecondsCPU) : 0;
-        const int32_t fpsGPU = gpuTimeStampsAvailable ? static_cast<int32_t>(g_NanosecondsPerSecond / frameTimeNanoSecondsGPU) : 0;
-        const int32_t fps = std::min(fpsGPU, fpsCPU);
-        static bool s_ShowMilliSeconds = true;
-        static bool s_ShowGPUTimes = true;
+        const float&  frameTimeNanoSecondsCPU = s_CPUFrameTimes[c_NumFrames - 1];
+        const float&  frameTimeNanoSecondsGPU = s_GPUFrameTimes[c_NumFrames - 1];
+        const float   frameTimeMicroSeconds   = frameTimeNanoSecondsCPU * 0.001f;
+        const float   frameTimeMilliSeconds   = frameTimeMicroSeconds * 0.001f;
+        const int32_t fpsCPU                  = cpuTimeStampsAvailable ? static_cast<int32_t>(g_NanosecondsPerSecond / frameTimeNanoSecondsCPU) : 0;
+        const int32_t fpsGPU                  = gpuTimeStampsAvailable ? static_cast<int32_t>(g_NanosecondsPerSecond / frameTimeNanoSecondsGPU) : 0;
+        const int32_t fps                     = std::min(fpsGPU, fpsCPU);
+        static bool   s_ShowMilliSeconds      = true;
+        static bool   s_ShowGPUTimes          = true;
 
         const ResolutionInfo& resInfo      = pFwrk->GetResolutionInfo();
-        float outputHeight = static_cast<float>(resInfo.DisplayHeight - ((s_UIDialogYSpacing * 3 + s_UITabDialogHeight) * uiscale.getY()));
+        float                 outputHeight = static_cast<float>(resInfo.DisplayHeight - ((s_UIDialogYSpacing * 3 + s_UITabDialogHeight) * uiscale.getY()));
         ImGui::SetNextWindowSize(ImVec2(s_UIPerfDialogWidth * uiscale.getX(), outputHeight), ImGuiCond_FirstUseEver);
-        ImGui::SetNextWindowPos(ImVec2(s_UIDialogXSpacing * uiscale.getX(), (s_UIDialogYSpacing * 2 + s_UITabDialogHeight) * uiscale.getY()), ImGuiCond_FirstUseEver);
+        ImGui::SetNextWindowPos(ImVec2(s_UIDialogXSpacing * uiscale.getX(), (s_UIDialogYSpacing * 2 + s_UITabDialogHeight) * uiscale.getY()),
+                                ImGuiCond_FirstUseEver);
         ImGui::Begin("Performance (F2 to toggle)", nullptr, ImGuiWindowFlags_NoCollapse);
         {
             if (GetFramework()->UpscalerEnabled())
@@ -505,15 +513,16 @@ namespace cauldron
                 uint32_t frameTimeGraphMaxValue = 0;
                 if (s_ShowGPUTimes)
                 {
-                    for (int32_t i = 0; i < _countof(s_FrameTimeGraphMaxGPUValues); ++i)
+                    for (int32_t i = 0; i < std::size(s_FrameTimeGraphMaxGPUValues); ++i)
                     {
-                        if (s_HighestRecentGPUTime < s_FrameTimeGraphMaxGPUValues[i]) // sFrameTimeGraphMaxGPUValues are in increasing order
+                        if (s_HighestRecentGPUTime < s_FrameTimeGraphMaxGPUValues[i])  // sFrameTimeGraphMaxGPUValues are in increasing order
                         {
-                            frameTimeGraphMaxValue = std::min(static_cast<int32_t>(_countof(s_FrameTimeGraphMaxGPUValues) - 1), i + 1);
+                            frameTimeGraphMaxValue = std::min(static_cast<int32_t>(std::size(s_FrameTimeGraphMaxGPUValues) - 1), i + 1);
                             break;
                         }
                     }
-                    ImGui::PlotLines("", s_GPUFrameTimes, c_NumFrames, 0, "GPU frame time (us)", 0.0f, s_FrameTimeGraphMaxGPUValues[frameTimeGraphMaxValue], ImVec2(0, 40));
+                    ImGui::PlotLines(
+                        "", s_GPUFrameTimes, c_NumFrames, 0, "GPU frame time (us)", 0.0f, s_FrameTimeGraphMaxGPUValues[frameTimeGraphMaxValue], ImVec2(0, 40));
 
                     // Display frame time separately as it's recorded over multiple cmd lists and can't be done together in VK
                     {
@@ -521,10 +530,10 @@ namespace cauldron
                         if (s_NumGatheredFrames)
                         {
                             int64_t avg = s_GPUFrameTotals / s_NumGatheredFrames;
-                            valueAvg = s_ShowMilliSeconds ? avg * 0.000001f : avg * 0.001f;
+                            valueAvg    = s_ShowMilliSeconds ? avg * 0.000001f : avg * 0.001f;
                         }
 
-                        float value = s_ShowMilliSeconds ? GPUTickCount * 0.000001f : GPUTickCount * 0.001f;
+                        float       value    = s_ShowMilliSeconds ? GPUTickCount * 0.000001f : GPUTickCount * 0.001f;
                         const char* pStrUnit = s_ShowMilliSeconds ? "ms" : "us";
                         ImGui::Text("%-24.24S: %7.2f %s", L"GPU Frame (total)", value, pStrUnit);
                         ImGui::SameLine();
@@ -538,13 +547,13 @@ namespace cauldron
                         if (s_NumGatheredFrames)
                         {
                             int64_t nanoCountTotal = s_GPUTotals[i].TotalTime.count();
-                            int64_t avg = nanoCountTotal / s_NumGatheredFrames;
-                            valueAvg = s_ShowMilliSeconds ? avg * 0.000001f : avg * 0.001f;
+                            int64_t avg            = nanoCountTotal / s_NumGatheredFrames;
+                            valueAvg               = s_ShowMilliSeconds ? avg * 0.000001f : avg * 0.001f;
                         }
 
-                        int64_t nanoCount = gpuTimings[i].GetDuration().count();
-                        float value = s_ShowMilliSeconds ? nanoCount * 0.000001f : nanoCount * 0.001f;
-                        const char* pStrUnit = s_ShowMilliSeconds ? "ms" : "us";
+                        int64_t     nanoCount = gpuTimings[i].GetDuration().count();
+                        float       value     = s_ShowMilliSeconds ? nanoCount * 0.000001f : nanoCount * 0.001f;
+                        const char* pStrUnit  = s_ShowMilliSeconds ? "ms" : "us";
                         // Will print only up to 24 characters left aligned from ':' by 24 characters, and write timings to 2 decimals right aligned by 7 characters
                         ImGui::Text("%-24.24S: %7.2f %s", gpuTimings[i].Label.c_str(), value, pStrUnit);
                         ImGui::SameLine();
@@ -553,15 +562,16 @@ namespace cauldron
                 }
                 else
                 {
-                    for (int32_t i = 0; i < _countof(s_FrameTimeGraphMaxCPUValues); ++i)
+                    for (int32_t i = 0; i < std::size(s_FrameTimeGraphMaxCPUValues); ++i)
                     {
-                        if (s_HighestRecentCPUTime < s_FrameTimeGraphMaxCPUValues[i]) // sFrameTimeGraphMaxCPUValues are in increasing order
+                        if (s_HighestRecentCPUTime < s_FrameTimeGraphMaxCPUValues[i])  // sFrameTimeGraphMaxCPUValues are in increasing order
                         {
-                            frameTimeGraphMaxValue = std::min(static_cast<int32_t>(_countof(s_FrameTimeGraphMaxCPUValues) - 1), i + 1);
+                            frameTimeGraphMaxValue = std::min(static_cast<int32_t>(std::size(s_FrameTimeGraphMaxCPUValues) - 1), i + 1);
                             break;
                         }
                     }
-                    ImGui::PlotLines("", s_CPUFrameTimes, c_NumFrames, 0, "CPU frame time (us)", 0.0f, s_FrameTimeGraphMaxCPUValues[frameTimeGraphMaxValue], ImVec2(0, 40));
+                    ImGui::PlotLines(
+                        "", s_CPUFrameTimes, c_NumFrames, 0, "CPU frame time (us)", 0.0f, s_FrameTimeGraphMaxCPUValues[frameTimeGraphMaxValue], ImVec2(0, 40));
 
                     // Display frame time separately as it's recorded over multiple cmd lists and can't be done together in VK
                     {
@@ -569,10 +579,10 @@ namespace cauldron
                         if (s_NumGatheredFrames)
                         {
                             int64_t avg = s_CPUFrameTotals / s_NumGatheredFrames;
-                            valueAvg = s_ShowMilliSeconds ? avg * 0.000001f : avg * 0.001f;
+                            valueAvg    = s_ShowMilliSeconds ? avg * 0.000001f : avg * 0.001f;
                         }
 
-                        float value = s_ShowMilliSeconds ? CPUTickCount * 0.000001f : CPUTickCount * 0.001f;
+                        float       value    = s_ShowMilliSeconds ? CPUTickCount * 0.000001f : CPUTickCount * 0.001f;
                         const char* pStrUnit = s_ShowMilliSeconds ? "ms" : "us";
                         ImGui::Text("%-24.24S: %7.2f %s", L"CPU Frame (total)", value, pStrUnit);
                         ImGui::SameLine();
@@ -586,13 +596,13 @@ namespace cauldron
                         if (s_NumGatheredFrames)
                         {
                             int64_t nanoCountTotal = s_CPUTotals[i].TotalTime.count();
-                            int64_t avg = nanoCountTotal / s_NumGatheredFrames;
-                            valueAvg = s_ShowMilliSeconds ? avg * 0.000001f : avg * 0.001f;
+                            int64_t avg            = nanoCountTotal / s_NumGatheredFrames;
+                            valueAvg               = s_ShowMilliSeconds ? avg * 0.000001f : avg * 0.001f;
                         }
 
-                        int64_t nanoCount = cpuTimings[i].GetDuration().count();
-                        float value = s_ShowMilliSeconds ? nanoCount * 0.000001f : nanoCount * 0.001f;
-                        const char* pStrUnit = s_ShowMilliSeconds ? "ms" : "us";
+                        int64_t     nanoCount = cpuTimings[i].GetDuration().count();
+                        float       value     = s_ShowMilliSeconds ? nanoCount * 0.000001f : nanoCount * 0.001f;
+                        const char* pStrUnit  = s_ShowMilliSeconds ? "ms" : "us";
                         ImGui::Text("%-18S: %7.2f %s", cpuTimings[i].Label.c_str(), value, pStrUnit);
                         ImGui::SameLine();
                         ImGui::Text("  avg: %7.2f %s", valueAvg, pStrUnit);
@@ -600,7 +610,7 @@ namespace cauldron
                 }
             }
         }
-        ImGui::End();   // Profiler window
+        ImGui::End();  // Profiler window
     }
 
     // Builds the output log dialog
@@ -608,10 +618,12 @@ namespace cauldron
     {
         // Setup first time use location (UI always done at display res)
         const ResolutionInfo& resInfo      = GetFramework()->GetResolutionInfo();
-        float outputWidth = resInfo.fDisplayWidth() - ((s_UIDialogXSpacing * 3 + s_UIPerfDialogWidth) * uiscale.getX());
-        float outputHeight = resInfo.fDisplayHeight() - ((s_UIDialogYSpacing * 3 + s_UITabDialogHeight) * uiscale.getY());
+        float                 outputWidth  = resInfo.fDisplayWidth() - ((s_UIDialogXSpacing * 3 + s_UIPerfDialogWidth) * uiscale.getX());
+        float                 outputHeight = resInfo.fDisplayHeight() - ((s_UIDialogYSpacing * 3 + s_UITabDialogHeight) * uiscale.getY());
         ImGui::SetNextWindowSize(ImVec2(outputWidth, outputHeight), ImGuiCond_FirstUseEver);
-        ImGui::SetNextWindowPos(ImVec2((s_UIDialogXSpacing * 2 + s_UIPerfDialogWidth) * uiscale.getX(), (s_UIDialogYSpacing * 2 + s_UITabDialogHeight) * uiscale.getY()), ImGuiCond_FirstUseEver);
+        ImGui::SetNextWindowPos(
+            ImVec2((s_UIDialogXSpacing * 2 + s_UIPerfDialogWidth) * uiscale.getX(), (s_UIDialogYSpacing * 2 + s_UITabDialogHeight) * uiscale.getY()),
+            ImGuiCond_FirstUseEver);
         ImGui::Begin("Output (F3 to toggle)", nullptr, ImGuiWindowFlags_NoCollapse);
         {
             // Query the number of each type of message we have for filtering options
@@ -666,20 +678,20 @@ namespace cauldron
             for (auto msgIter = messages.begin(); msgIter != messages.end(); ++msgIter)
             {
                 ImVec4 color;
-                bool hasColor;
+                bool   hasColor;
                 switch (msgIter->LogPriority)
                 {
                 case LogLevel::LOGLEVEL_DEBUG:
-                    color = ImVec4(0.4f, 0.4f, 1.f, 1.f);
+                    color    = ImVec4(0.4f, 0.4f, 1.f, 1.f);
                     hasColor = true;
                     break;
                 case LogLevel::LOGLEVEL_WARNING:
-                    color = ImVec4(1.0f, 0.9f, 0.4f, 1.f);
+                    color    = ImVec4(1.0f, 0.9f, 0.4f, 1.f);
                     hasColor = true;
                     break;
                 case LogLevel::LOGLEVEL_ERROR:
                 case LogLevel::LOGLEVEL_FATAL:
-                    color = ImVec4(1.0f, 0.4f, 0.4f, 1.f);
+                    color    = ImVec4(1.0f, 0.4f, 0.4f, 1.f);
                     hasColor = true;
                     break;
                 default:
@@ -699,14 +711,15 @@ namespace cauldron
 
             ImGui::EndChild();  // scroll reservation
 
-            ImGui::End();   // End output window
+            ImGui::End();  // End output window
         }
     }
 
     // Builds the general tab
     void UIBackendInternal::BuildGeneralTab()
     {
-        static RuntimeShaderRecompilerRenderModule* pShaderCompilerRM = static_cast<RuntimeShaderRecompilerRenderModule*>(GetFramework()->GetRenderModule("RuntimeShaderRecompilerRenderModule"));
+        static RuntimeShaderRecompilerRenderModule* pShaderCompilerRM =
+            static_cast<RuntimeShaderRecompilerRenderModule*>(GetFramework()->GetRenderModule("RuntimeShaderRecompilerRenderModule"));
         if (pShaderCompilerRM && pShaderCompilerRM->RebuildEnabled())
         {
             if (ImGui::CollapsingHeader("Shader re-compile", ImGuiTreeNodeFlags_DefaultOpen))
@@ -729,21 +742,21 @@ namespace cauldron
             }
         }
 
-        if(GetConfig()->IsAnyInCodeCaptureEnabled())
+        if (GetConfig()->IsAnyInCodeCaptureEnabled())
         {
             if (ImGui::CollapsingHeader("Capture", ImGuiTreeNodeFlags_DefaultOpen))
             {
-                if(GetConfig()->EnableRenderDocCapture)
+                if (GetConfig()->EnableRenderDocCapture)
                 {
-                    if(ImGui::Button("RenderDoc"))
+                    if (ImGui::Button("RenderDoc"))
                     {
                         GetFramework()->TakeRenderDocCapture();
                     }
                 }
 
-                if(GetFramework()->GetConfig()->EnablePixCapture)
+                if (GetFramework()->GetConfig()->EnablePixCapture)
                 {
-                    if(ImGui::Button("Pix"))
+                    if (ImGui::Button("Pix"))
                     {
                         GetFramework()->TakePixCapture();
                     }
@@ -755,8 +768,7 @@ namespace cauldron
         for (const auto& sectionIter : GetUIManager()->GetGeneralLayout())
         {
             const auto& section = sectionIter.second;
-            if (section->Shown() &&
-                ImGui::CollapsingHeader(section->GetSectionName(), ImGuiTreeNodeFlags_DefaultOpen))
+            if (section->Shown() && ImGui::CollapsingHeader(section->GetSectionName(), ImGuiTreeNodeFlags_DefaultOpen))
             {
                 // Iterate through all elements
                 for (const auto& elementIter : section->GetElements())
@@ -799,16 +811,17 @@ namespace cauldron
         else
         {
             // Render disabled style is not active
-            if (!pEntity->IsActive()) {
+            if (!pEntity->IsActive())
+            {
                 ImGui::BeginDisabled(true);
             }
-                
+
             ImGui::Text("%S", pEntity->GetName());
 
-            if (!pEntity->IsActive()) {
+            if (!pEntity->IsActive())
+            {
                 ImGui::EndDisabled();
             }
-                
         }
     }
 
@@ -889,6 +902,6 @@ namespace cauldron
         ImGui::Separator();
     }
 
-} // namespace cauldron
+}  // namespace cauldron
 
-#endif // defined(_WINDOWS)
+#endif  // defined(_WINDOWS)

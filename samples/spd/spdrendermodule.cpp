@@ -1,7 +1,7 @@
 // This file is part of the FidelityFX SDK.
 //
 // Copyright (C) 2024 Advanced Micro Devices, Inc.
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files(the "Software"), to deal
 // in the Software without restriction, including without limitation the rights
@@ -45,34 +45,29 @@ using namespace std::experimental;
 void SPDRenderModule::Init(const json& initData)
 {
     // Fetch needed resource
-    m_pColorTarget = GetFramework()->GetColorTargetForCallback(GetName());
+    m_pColorTarget     = GetFramework()->GetColorTargetForCallback(GetName());
     m_pColorRasterView = GetRasterViewAllocator()->RequestRasterView(m_pColorTarget, ViewDimension::Texture2D);
 
     // Register UI for SPD
     UISection* uiSection = GetUIManager()->RegisterUIElements("Downsampler", UISectionType::Sample);
 
-    const char* downsamplers[] = { "Multipass PS", "Multipass CS", "SPD CS" };
-    const char* loadOptions[] = { "Load", "Linear Sampler" };
-    const char* waveOptions[] = { "LocalDataShare", "WaveOps" };
-    const char* mathOptions[] = { "Non-Packed", "Packed" };
-    const char* sliceOptions[] = { "0", "1", "2", "3", "4", "5" };
+    const char* downsamplers[] = {"Multipass PS", "Multipass CS", "SPD CS"};
+    const char* loadOptions[]  = {"Load", "Linear Sampler"};
+    const char* waveOptions[]  = {"LocalDataShare", "WaveOps"};
+    const char* mathOptions[]  = {"Non-Packed", "Packed"};
+    const char* sliceOptions[] = {"0", "1", "2", "3", "4", "5"};
 
     std::vector<const char*> comboOptions;
 
     // Add down sampler combo
-    comboOptions.assign(downsamplers, downsamplers + _countof(downsamplers));
-    uiSection->RegisterUIElement<UICombo>(
-        "Downsampler options",
-        m_DownsamplerUsed,
-        std::move(comboOptions),
-        [this](int32_t cur, int32_t old) {
-            if (cur != old)
-            {
-                UpdateSPDContext(false);
-                UpdateSPDContext(true);
-            }
+    comboOptions.assign(downsamplers, downsamplers + std::size(downsamplers));
+    uiSection->RegisterUIElement<UICombo>("Downsampler options", m_DownsamplerUsed, std::move(comboOptions), [this](int32_t cur, int32_t old) {
+        if (cur != old)
+        {
+            UpdateSPDContext(false);
+            UpdateSPDContext(true);
         }
-    );
+    });
 
     // Use the same callback for all option changes, which will always destroy/create the context
     std::function<void(int32_t, int32_t)> optionChangeCallback = [this](int32_t, int32_t) {
@@ -85,48 +80,45 @@ void SPDRenderModule::Init(const json& initData)
     };
 
     // Add load/linear combo
-    comboOptions.assign(loadOptions, loadOptions + _countof(loadOptions));
+    comboOptions.assign(loadOptions, loadOptions + std::size(loadOptions));
     uiSection->RegisterUIElement<UICombo>("SPD Load / Linear", m_SPDLoadLinear, std::move(comboOptions), optionChangeCallback);
 
     // Add wave op combo
-    comboOptions.assign(waveOptions, waveOptions + _countof(waveOptions));
+    comboOptions.assign(waveOptions, waveOptions + std::size(waveOptions));
     uiSection->RegisterUIElement<UICombo>("SPD Wave Interop", m_SPDWaveInterop, std::move(comboOptions), optionChangeCallback);
 
     // Add math combo
-    comboOptions.assign(mathOptions, mathOptions + _countof(mathOptions));
+    comboOptions.assign(mathOptions, mathOptions + std::size(mathOptions));
     uiSection->RegisterUIElement<UICombo>("SPD Math", m_SPDMath, std::move(comboOptions), optionChangeCallback);
 
     // Add a combo for the slice to view (assumes a cubemap, if ever we are viewing a 2d texture, disable UI)
-    comboOptions.assign(sliceOptions, sliceOptions + _countof(sliceOptions));
+    comboOptions.assign(sliceOptions, sliceOptions + std::size(sliceOptions));
     uiSection->RegisterUIElement<UICombo>("Slice to View", (int32_t&)m_ViewSlice, std::move(comboOptions));
 
-    GetFramework()->ConfigureRuntimeShaderRecompiler(
-        [this](void) { DestroyFfxContext(); }, [this](void) { InitFfxContext(); });
+    GetFramework()->ConfigureRuntimeShaderRecompiler([this](void) { DestroyFfxContext(); }, [this](void) { InitFfxContext(); });
 
     // Initialize common resources that aren't pipeline dependent
-    m_LinearSamplerDesc.Filter = FilterFunc::MinMagLinearMipPoint;
-    m_LinearSamplerDesc.MaxLOD = std::numeric_limits<float>::max();
+    m_LinearSamplerDesc.Filter        = FilterFunc::MinMagLinearMipPoint;
+    m_LinearSamplerDesc.MaxLOD        = std::numeric_limits<float>::max();
     m_LinearSamplerDesc.MaxAnisotropy = 1;
 
     // Pipelines will be initialized after the texture is loaded
 
     // Using AllowRenderTarget + AllowUnorderedAccess on the same resource is usually
     // frowned upon for performance reasons, but we are doing it here in the interest of re-using a resource
-    TextureLoadCompletionCallbackFn completionCallback = 
-        [this](const std::vector<const Texture*>& textures, void* additionalParams = nullptr) { 
-        this->TextureLoadComplete(textures, additionalParams); 
+    TextureLoadCompletionCallbackFn completionCallback = [this](const std::vector<const Texture*>& textures, void* additionalParams = nullptr) {
+        this->TextureLoadComplete(textures, additionalParams);
     };
 
     filesystem::path texturePath = L"..\\media\\Textures\\SPD\\spd_cubemap.dds";
-    GetContentManager()->LoadTexture(TextureLoadInfo(texturePath, true, 1.f, 
-        ResourceFlags::AllowRenderTarget | ResourceFlags::AllowUnorderedAccess), 
-        completionCallback);
+    GetContentManager()->LoadTexture(TextureLoadInfo(texturePath, true, 1.f, ResourceFlags::AllowRenderTarget | ResourceFlags::AllowUnorderedAccess),
+                                     completionCallback);
 }
 
 SPDRenderModule::~SPDRenderModule()
 {
     DestroyFfxContext();
-    
+
     // Delete pipeline objects and resources
     for (int32_t i = 0; i < static_cast<int32_t>(DownsampleTechnique::Count); ++i)
     {
@@ -143,7 +135,7 @@ SPDRenderModule::~SPDRenderModule()
     m_VerificationSet.ParameterSets.clear();
     delete m_VerificationSet.pPipelineObj;
     delete m_VerificationSet.pRootSignature;
-    m_pColorRasterView = nullptr; // Don't own this memory
+    m_pColorRasterView = nullptr;  // Don't own this memory
 
     // Clear out our raster views
     m_RasterViews.clear();
@@ -168,7 +160,8 @@ void SPDRenderModule::DestroyFfxContext()
 void SPDRenderModule::InitTraditionalDSPipeline(bool computeDownsample)
 {
     ShaderBindStage shaderStage = (computeDownsample) ? ShaderBindStage::Compute : ShaderBindStage::Pixel;
-    int32_t pipelineID = (computeDownsample) ? static_cast<int32_t>(DownsampleTechnique::CSDownsample) : static_cast<int32_t>(DownsampleTechnique::PSDownsample);
+    int32_t         pipelineID =
+        (computeDownsample) ? static_cast<int32_t>(DownsampleTechnique::CSDownsample) : static_cast<int32_t>(DownsampleTechnique::PSDownsample);
 
     // Create root signature
     RootSignatureDesc signatureDesc;
@@ -208,7 +201,7 @@ void SPDRenderModule::InitTraditionalDSPipeline(bool computeDownsample)
 
         // Setup remaining information and build
         psoDesc.AddPrimitiveTopology(PrimitiveTopologyType::Triangle);
-        psoDesc.AddRasterFormats(m_pCubeTexture->GetFormat());   // Use the first raster set, as we just want the format and they are all the same
+        psoDesc.AddRasterFormats(m_pCubeTexture->GetFormat());  // Use the first raster set, as we just want the format and they are all the same
     }
 
     m_PipelineSets[pipelineID].pPipelineObj = PipelineObject::CreatePipelineObject(pipelineName.c_str(), psoDesc);
@@ -281,7 +274,7 @@ void SPDRenderModule::UpdateSPDContext(bool enabled)
     if (enabled && !m_ContextCreated)
     {
         // Setup all the parameters for this SPD run
-        m_InitializationParameters.flags = 0;   // Reset
+        m_InitializationParameters.flags = 0;  // Reset
         m_InitializationParameters.flags |= m_SPDLoadLinear ? FFX_SPD_SAMPLER_LINEAR : FFX_SPD_SAMPLER_LOAD;
         m_InitializationParameters.flags |= m_SPDWaveInterop ? FFX_SPD_WAVE_INTEROP_WAVE_OPS : FFX_SPD_WAVE_INTEROP_LDS;
         m_InitializationParameters.flags |= m_SPDMath ? FFX_SPD_MATH_PACKED : FFX_SPD_MATH_NONPACKED;
@@ -289,7 +282,6 @@ void SPDRenderModule::UpdateSPDContext(bool enabled)
         ffxSpdContextCreate(&m_Context, &m_InitializationParameters);
 
         m_ContextCreated = true;
-        
     }
     else if (!enabled && m_ContextCreated)
     {
@@ -319,15 +311,15 @@ void SPDRenderModule::TextureLoadComplete(const std::vector<const Texture*>& tex
         for (uint32_t mip = 0; mip < desc.MipLevels - 1; ++mip)
         {
             // Setup raster sets for the pixel shader down sample
-            int32_t resourceOffset = slice * (desc.MipLevels - 1) + mip;
+            int32_t resourceOffset        = slice * (desc.MipLevels - 1) + mip;
             m_RasterViews[resourceOffset] = GetRasterViewAllocator()->RequestRasterView(m_pCubeTexture, ViewDimension::Texture2DArray, mip + 1, 1, slice);
         }
     }
 
     // Init all pipelines for the various down sample modes
-    InitTraditionalDSPipeline(false);   // PS version
-    InitTraditionalDSPipeline(true);    // CS version
-    InitVerificationPipeline();         // Result verification pipeline set
+    InitTraditionalDSPipeline(false);  // PS version
+    InitTraditionalDSPipeline(true);   // CS version
+    InitVerificationPipeline();        // Result verification pipeline set
 
     InitFfxContext();
 
@@ -339,15 +331,19 @@ void SPDRenderModule::InitFfxContext()
 {
     // Initialize the FFX backend
     const size_t scratchBufferSize = SDKWrapper::ffxGetScratchMemorySize(FFX_SPD_CONTEXT_COUNT);
-    void* scratchBuffer = calloc(scratchBufferSize, 1u);
-    FfxErrorCode errorCode = SDKWrapper::ffxGetInterface(&m_InitializationParameters.backendInterface, GetDevice(), scratchBuffer, scratchBufferSize, FFX_SPD_CONTEXT_COUNT);
+    void*        scratchBuffer     = calloc(scratchBufferSize, 1u);
+    FfxErrorCode errorCode =
+        SDKWrapper::ffxGetInterface(&m_InitializationParameters.backendInterface, GetDevice(), scratchBuffer, scratchBufferSize, FFX_SPD_CONTEXT_COUNT);
     CAULDRON_ASSERT(errorCode == FFX_OK);
-    CauldronAssert(ASSERT_CRITICAL, m_InitializationParameters.backendInterface.fpGetSDKVersion(&m_InitializationParameters.backendInterface) == FFX_SDK_MAKE_VERSION(1, 1, 4),
-        L"FidelityFX SPD 2.1 sample requires linking with a 1.1.4 version SDK backend");
-    CauldronAssert(ASSERT_CRITICAL, ffxSpdGetEffectVersion() == FFX_SDK_MAKE_VERSION(2, 2, 0),
-                       L"FidelityFX SPD 2.1 sample requires linking with a 2.2 version FidelityFX SPD library");
+    CauldronAssert(ASSERT_CRITICAL,
+                   m_InitializationParameters.backendInterface.fpGetSDKVersion(&m_InitializationParameters.backendInterface) == FFX_SDK_MAKE_VERSION(1, 1, 4),
+                   L"FidelityFX SPD 2.1 sample requires linking with a 1.1.4 version SDK backend");
+    CauldronAssert(ASSERT_CRITICAL,
+                   ffxSpdGetEffectVersion() == FFX_SDK_MAKE_VERSION(2, 2, 0),
+                   L"FidelityFX SPD 2.1 sample requires linking with a 2.2 version FidelityFX SPD library");
 
-    m_InitializationParameters.backendInterface.fpRegisterConstantBufferAllocator(&m_InitializationParameters.backendInterface, SDKWrapper::ffxAllocateConstantBuffer);
+    m_InitializationParameters.backendInterface.fpRegisterConstantBufferAllocator(&m_InitializationParameters.backendInterface,
+                                                                                  SDKWrapper::ffxAllocateConstantBuffer);
     // Init SPD
     UpdateSPDContext(m_DownsamplerUsed == static_cast<int32_t>(DownsampleTechnique::SPDDownsample));
 }
@@ -370,7 +366,7 @@ void SPDRenderModule::Execute(double deltaTime, CommandList* pCmdList)
     default:
         ExecuteSPDDownsample(deltaTime, pCmdList);
         break;
-    }        
+    }
 
     // Render the verification quads
     ExecuteVerificationQuads(deltaTime, pCmdList);
@@ -391,17 +387,16 @@ void SPDRenderModule::ExecuteVerificationQuads(double deltaTime, CommandList* pC
     SetPrimitiveTopology(pCmdList, PrimitiveTopology::TriangleList);
 
     // Barrier the color target to render
-    Barrier rtBarrier = Barrier::Transition(m_pColorTarget->GetResource(),
-        ResourceState::NonPixelShaderResource | ResourceState::PixelShaderResource,
-        ResourceState::RenderTargetResource);
+    Barrier rtBarrier = Barrier::Transition(
+        m_pColorTarget->GetResource(), ResourceState::NonPixelShaderResource | ResourceState::PixelShaderResource, ResourceState::RenderTargetResource);
     ResourceBarrier(pCmdList, 1, &rtBarrier);
 
     // Begin raster into cube map mip face
     BeginRaster(pCmdList, 1, &m_pColorRasterView);
 
     // Allocate a dynamic constant buffer and set
-    SPDVerifyConstants verityConst = { (uint32_t)m_VerificationSet.ParameterSets.size(), m_ViewSlice, 1.f / GetFramework()->GetAspectRatio(), 0 };
-    BufferAddressInfo bufferInfo = GetDynamicBufferPool()->AllocConstantBuffer(sizeof(SPDVerifyConstants), &verityConst);
+    SPDVerifyConstants verityConst = {(uint32_t)m_VerificationSet.ParameterSets.size(), m_ViewSlice, 1.f / GetFramework()->GetAspectRatio(), 0};
+    BufferAddressInfo  bufferInfo  = GetDynamicBufferPool()->AllocConstantBuffer(sizeof(SPDVerifyConstants), &verityConst);
     m_VerificationSet.ParameterSets[0]->UpdateRootConstantBuffer(&bufferInfo, 0);
 
     // Bind all parameters
@@ -410,21 +405,21 @@ void SPDRenderModule::ExecuteVerificationQuads(double deltaTime, CommandList* pC
     // Set pipeline and draw
     const ResolutionInfo& resInfo = GetFramework()->GetResolutionInfo();
 
-    Viewport vp = { 0.f, 0.f, resInfo.fDisplayWidth(), resInfo.fDisplayHeight(), 0.f, 1.f };
+    Viewport vp = {0.f, 0.f, resInfo.fDisplayWidth(), resInfo.fDisplayHeight(), 0.f, 1.f};
     SetViewport(pCmdList, &vp);
-    Rect scissorRect = { 0, 0, resInfo.RenderWidth, resInfo.RenderHeight };
+    Rect scissorRect = {0, 0, resInfo.RenderWidth, resInfo.RenderHeight};
     SetScissorRects(pCmdList, 1, &scissorRect);
 
     SetPipelineState(pCmdList, m_VerificationSet.pPipelineObj);
-    CauldronAssert(ASSERT_CRITICAL, m_pCubeTexture->GetDesc().MipLevels < SPD_MAX_MIP_LEVELS, L"SPD Shader only can't represent mip. Please grow SPD_MAX_MIP_LEVELS");
+    CauldronAssert(
+        ASSERT_CRITICAL, m_pCubeTexture->GetDesc().MipLevels < SPD_MAX_MIP_LEVELS, L"SPD Shader only can't represent mip. Please grow SPD_MAX_MIP_LEVELS");
     DrawInstanced(pCmdList, 6, m_pCubeTexture->GetDesc().MipLevels);  // Each mip will represent another quad instance
 
     // End raster into cube map mip face
     EndRaster(pCmdList);
 
-    rtBarrier = Barrier::Transition(m_pColorTarget->GetResource(),
-        ResourceState::RenderTargetResource,
-        ResourceState::NonPixelShaderResource | ResourceState::PixelShaderResource);
+    rtBarrier = Barrier::Transition(
+        m_pColorTarget->GetResource(), ResourceState::RenderTargetResource, ResourceState::NonPixelShaderResource | ResourceState::PixelShaderResource);
     ResourceBarrier(pCmdList, 1, &rtBarrier);
 }
 
@@ -444,19 +439,24 @@ void SPDRenderModule::ExecutePSDownsample(double deltaTime, cauldron::CommandLis
             int32_t resourceOffset = slice * (desc.MipLevels - 1) + mip;
 
             // Barrier the face in/out
-            Barrier rtBarrier = Barrier::Transition(m_pCubeTexture->GetResource(), 
-                ResourceState::NonPixelShaderResource | ResourceState::PixelShaderResource,
-                ResourceState::RenderTargetResource, 
-                slice * desc.MipLevels + mip + 1);
+            Barrier rtBarrier = Barrier::Transition(m_pCubeTexture->GetResource(),
+                                                    ResourceState::NonPixelShaderResource | ResourceState::PixelShaderResource,
+                                                    ResourceState::RenderTargetResource,
+                                                    slice * desc.MipLevels + mip + 1);
             ResourceBarrier(pCmdList, 1, &rtBarrier);
 
             // Begin raster into cube map mip face
             BeginRaster(pCmdList, 1, &m_RasterViews[resourceOffset]);
 
             // Allocate a dynamic constant buffer and set
-            SPDDownsampleInfo constants = { desc.Width >> (mip +1), desc.Height >> (mip + 1), // OutSize
-                                            1.f / static_cast<float>(desc.Width >> mip), 1.f / static_cast<float>(desc.Height >> mip), // InvSize
-                                            0, 0, 0, 0 };   // Padding
+            SPDDownsampleInfo constants  = {desc.Width >> (mip + 1),
+                                            desc.Height >> (mip + 1),  // OutSize
+                                            1.f / static_cast<float>(desc.Width >> mip),
+                                            1.f / static_cast<float>(desc.Height >> mip),  // InvSize
+                                            0,
+                                            0,
+                                            0,
+                                            0};  // Padding
             BufferAddressInfo bufferInfo = GetDynamicBufferPool()->AllocConstantBuffer(sizeof(SPDDownsampleInfo), &constants);
             pipeline.ParameterSets[resourceOffset]->UpdateRootConstantBuffer(&bufferInfo, 0);
 
@@ -471,10 +471,10 @@ void SPDRenderModule::ExecutePSDownsample(double deltaTime, cauldron::CommandLis
             // End raster into cube map mip face
             EndRaster(pCmdList);
 
-            rtBarrier = Barrier::Transition(m_pCubeTexture->GetResource(), 
-                ResourceState::RenderTargetResource,
-                ResourceState::NonPixelShaderResource | ResourceState::PixelShaderResource, 
-                slice * desc.MipLevels + mip + 1);
+            rtBarrier = Barrier::Transition(m_pCubeTexture->GetResource(),
+                                            ResourceState::RenderTargetResource,
+                                            ResourceState::NonPixelShaderResource | ResourceState::PixelShaderResource,
+                                            slice * desc.MipLevels + mip + 1);
             ResourceBarrier(pCmdList, 1, &rtBarrier);
         }
     }
@@ -487,20 +487,26 @@ void SPDRenderModule::ExecuteCSDownsample(double deltaTime, cauldron::CommandLis
     // Down sample each face/mip individually
     const TextureDesc& desc = m_pCubeTexture->GetDesc();
 
-    for (int32_t slice = 0; slice < (int32_t)desc.DepthOrArraySize ; ++slice)
+    for (int32_t slice = 0; slice < (int32_t)desc.DepthOrArraySize; ++slice)
     {
         for (uint32_t mip = 0; mip < desc.MipLevels - 1; ++mip)
         {
             // Barrier the face in/out
-            Barrier rtBarrier = Barrier::Transition(m_pCubeTexture->GetResource(), 
-                ResourceState::NonPixelShaderResource | ResourceState::PixelShaderResource,
-                ResourceState::UnorderedAccess, mip + 1);
+            Barrier rtBarrier = Barrier::Transition(m_pCubeTexture->GetResource(),
+                                                    ResourceState::NonPixelShaderResource | ResourceState::PixelShaderResource,
+                                                    ResourceState::UnorderedAccess,
+                                                    mip + 1);
             ResourceBarrier(pCmdList, 1, &rtBarrier);
 
             // Allocate a dynamic constant buffer and set
-            SPDDownsampleInfo constants = { desc.Width >> (mip + 1), desc.Height >> (mip + 1), // OutSize
-                                            1.f / static_cast<float>(desc.Width >> mip), 1.f / static_cast<float>(desc.Height >> mip), // InvSize
-                                            slice, 0, 0, 0 };   // Slice + Padding
+            SPDDownsampleInfo constants  = {desc.Width >> (mip + 1),
+                                            desc.Height >> (mip + 1),  // OutSize
+                                            1.f / static_cast<float>(desc.Width >> mip),
+                                            1.f / static_cast<float>(desc.Height >> mip),  // InvSize
+                                            slice,
+                                            0,
+                                            0,
+                                            0};  // Slice + Padding
             BufferAddressInfo bufferInfo = GetDynamicBufferPool()->AllocConstantBuffer(sizeof(SPDDownsampleInfo), &constants);
             pipeline.ParameterSets[mip]->UpdateRootConstantBuffer(&bufferInfo, 0);
             // Bind all parameters
@@ -513,10 +519,10 @@ void SPDRenderModule::ExecuteCSDownsample(double deltaTime, cauldron::CommandLis
             uint32_t dispatchZ = 1;
             Dispatch(pCmdList, dispatchX, dispatchY, dispatchZ);
 
-            rtBarrier = Barrier::Transition(m_pCubeTexture->GetResource(), 
-                ResourceState::UnorderedAccess,
-                ResourceState::NonPixelShaderResource | ResourceState::PixelShaderResource, 
-                mip + 1);
+            rtBarrier = Barrier::Transition(m_pCubeTexture->GetResource(),
+                                            ResourceState::UnorderedAccess,
+                                            ResourceState::NonPixelShaderResource | ResourceState::PixelShaderResource,
+                                            mip + 1);
             ResourceBarrier(pCmdList, 1, &rtBarrier);
         }
     }
@@ -527,8 +533,9 @@ void SPDRenderModule::ExecuteSPDDownsample(double deltaTime, cauldron::CommandLi
     GPUScopedProfileCapture sampleMarker(pCmdList, L"SPD");
 
     FfxSpdDispatchDescription dispatchParameters = {};
-    dispatchParameters.commandList = SDKWrapper::ffxGetCommandList(pCmdList);
-    dispatchParameters.resource    = SDKWrapper::ffxGetResource(m_pCubeTexture->GetResource(), L"SPD_Downsample_Resource", FFX_RESOURCE_STATE_PIXEL_COMPUTE_READ, FFX_RESOURCE_USAGE_ARRAYVIEW);
+    dispatchParameters.commandList               = SDKWrapper::ffxGetCommandList(pCmdList);
+    dispatchParameters.resource                  = SDKWrapper::ffxGetResource(
+        m_pCubeTexture->GetResource(), L"SPD_Downsample_Resource", FFX_RESOURCE_STATE_PIXEL_COMPUTE_READ, FFX_RESOURCE_USAGE_ARRAYVIEW);
 
     FfxErrorCode errorCode = ffxSpdContextDispatch(&m_Context, &dispatchParameters);
     CAULDRON_ASSERT(errorCode == FFX_OK);

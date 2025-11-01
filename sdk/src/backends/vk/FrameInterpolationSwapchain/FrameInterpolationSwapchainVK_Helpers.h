@@ -1,7 +1,7 @@
 // This file is part of the FidelityFX SDK.
 //
 // Copyright (C) 2024 Advanced Micro Devices, Inc.
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files(the "Software"), to deal
 // in the Software without restriction, including without limitation the rights
@@ -27,12 +27,12 @@
 #include <FidelityFX/host/ffx_assert.h>
 #include <FidelityFX/host/backends/vk/ffx_vk.h>
 
-#include <Windows.h>
-#include <synchapi.h>
-
+//#include <Windows.h>
+//#include <synchapi.h>
+#include <mutex>
+#include <cmath>
 
 void waitForPerformanceCount(const int64_t targetCount);
-
 
 struct SubmissionSemaphores
 {
@@ -81,7 +81,7 @@ struct VulkanQueue : public VkQueueInfoFFX
         queue       = info.queue;
         familyIndex = info.familyIndex;
         submitFunc  = info.submitFunc;
-    } 
+    }
 
     void reset()
     {
@@ -228,7 +228,7 @@ public:
         VkResult res = vkEndCommandBuffer(commandBuffer);
         if (res != VK_SUCCESS)
             return res;
-        
+
         return queue.submit(commandBuffer, semaphore, availableSemaphoreValue);
     }
 
@@ -237,7 +237,7 @@ public:
         VkResult res = vkEndCommandBuffer(commandBuffer);
         if (res != VK_SUCCESS)
             return res;
-        
+
         semaphoresToSignal.add(semaphore, availableSemaphoreValue);
         return queue.submit(commandBuffer, semaphoresToWait, semaphoresToSignal);
     }
@@ -247,7 +247,7 @@ public:
         VkResult res = vkEndCommandBuffer(commandBuffer);
         if (res != VK_SUCCESS)
             return res;
-        
+
         return queue.submit(VK_NULL_HANDLE, semaphore, availableSemaphoreValue);
     }
 
@@ -265,21 +265,20 @@ class VulkanCommandPool
 {
 public:
 private:
-    CRITICAL_SECTION criticalSection                 = {};
-    uint32_t         queueFamilyIndices[NumFamilies] = {};
-    VkCommands       buffer[NumFamilies][Capacity]   = {};
+    std::mutex criticalSection                 = {};
+    uint32_t   queueFamilyIndices[NumFamilies] = {};
+    VkCommands buffer[NumFamilies][Capacity]   = {};
 
 public:
     VulkanCommandPool()
     {
-        InitializeCriticalSection(&criticalSection);
         for (size_t familyIndex = 0; familyIndex < NumFamilies; familyIndex++)
             queueFamilyIndices[familyIndex] = UINT32_MAX;
     }
 
     ~VulkanCommandPool()
     {
-        EnterCriticalSection(&criticalSection);
+        criticalSection.lock();
 
         for (size_t familyIndex = 0; familyIndex < NumFamilies; familyIndex++)
         {
@@ -296,14 +295,12 @@ public:
             queueFamilyIndices[familyIndex] = UINT32_MAX;
         }
 
-        LeaveCriticalSection(&criticalSection);
-
-        DeleteCriticalSection(&criticalSection);
+        criticalSection.unlock();
     }
 
     VkCommands* get(VkDevice device, VulkanQueue queue, const char* name)
     {
-        EnterCriticalSection(&criticalSection);
+        criticalSection.lock();
 
         uint32_t familyIndex = 0;
         // find family index
@@ -323,7 +320,7 @@ public:
         FFX_ASSERT(familyIndex < NumFamilies);
 
         VkCommands* pCommands = nullptr;
-        
+
         for (size_t idx = 0; idx < Capacity && (pCommands == nullptr); idx++)
         {
             auto& cmds = buffer[familyIndex][idx];
@@ -337,7 +334,7 @@ public:
 
         pCommands->occupy(queue, name);
 
-        LeaveCriticalSection(&criticalSection);
+        criticalSection.unlock();
 
         return pCommands;
     }

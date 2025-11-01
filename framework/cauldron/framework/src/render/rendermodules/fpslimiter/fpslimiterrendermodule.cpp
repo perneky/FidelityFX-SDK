@@ -1,7 +1,7 @@
 // This file is part of the FidelityFX SDK.
 //
 // Copyright (C) 2024 Advanced Micro Devices, Inc.
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files(the "Software"), to deal
 // in the Software without restriction, including without limitation the rights
@@ -33,7 +33,7 @@
 #include <synchapi.h>
 
 using namespace cauldron;
-#define USE_BUSY_WAIT   1
+#define USE_BUSY_WAIT 1
 
 // Used in a few places
 static uint32_t       sSeed;
@@ -128,38 +128,38 @@ void FPSLimiterRenderModule::Execute(double deltaTime, cauldron::CommandList* pC
     {
         CPUScopedProfileCapture marker(L"FPSLimiter");
 
+// CPU limiter
+#if USE_BUSY_WAIT
+        LARGE_INTEGER qpf;
+        QueryPerformanceFrequency(&qpf);
+        int64_t targetFrameTicks = qpf.QuadPart / m_TargetFPS;
+
+        static LARGE_INTEGER lastFrame = {};
+        LARGE_INTEGER        timeNow;
+        QueryPerformanceCounter(&timeNow);
+        int64_t delta = timeNow.QuadPart - lastFrame.QuadPart;
+        if (delta < targetFrameTicks)
+        {
+            TimerSleepQPC(lastFrame.QuadPart + targetFrameTicks);
+        }
+        QueryPerformanceCounter(&lastFrame);
+#else
         // CPU limiter
-        #if USE_BUSY_WAIT
-            LARGE_INTEGER qpf;
-            QueryPerformanceFrequency(&qpf);
-            int64_t targetFrameTicks = qpf.QuadPart / m_TargetFPS;
-
-            static LARGE_INTEGER lastFrame = {};
-            LARGE_INTEGER timeNow;
-            QueryPerformanceCounter(&timeNow);
-            int64_t delta = timeNow.QuadPart - lastFrame.QuadPart;
-            if (delta < targetFrameTicks)
-            {
-                TimerSleepQPC(lastFrame.QuadPart + targetFrameTicks);
-            }
-            QueryPerformanceCounter(&lastFrame);
-        #else
-            // CPU limiter
-            uint64_t                            targetFrameTimeUs = 1000000 / m_TargetFPS;
-            std::chrono::steady_clock::duration targetFrameTime =
+        uint64_t                            targetFrameTimeUs = 1000000 / m_TargetFPS;
+        std::chrono::steady_clock::duration targetFrameTime =
             std::chrono::duration_cast<std::chrono::steady_clock::duration>(std::chrono::microseconds{targetFrameTimeUs});
-            static std::chrono::steady_clock::time_point lastFrameTime = std::chrono::steady_clock::now();
-            std::chrono::steady_clock::time_point        timeNow       = std::chrono::steady_clock::now();
-            std::chrono::steady_clock::duration          delta         = timeNow - lastFrameTime;
+        static std::chrono::steady_clock::time_point lastFrameTime = std::chrono::steady_clock::now();
+        std::chrono::steady_clock::time_point        timeNow       = std::chrono::steady_clock::now();
+        std::chrono::steady_clock::duration          delta         = timeNow - lastFrameTime;
 
-            if (delta < targetFrameTime)
-            {
-                TimerSleep(targetFrameTime - delta);
-                timeNow += targetFrameTime - delta;
-            }
+        if (delta < targetFrameTime)
+        {
+            TimerSleep(targetFrameTime - delta);
+            timeNow += targetFrameTime - delta;
+        }
 
-            lastFrameTime = timeNow;
-        #endif // #if USE_BUSY_WAIT
+        lastFrameTime = timeNow;
+#endif  // #if USE_BUSY_WAIT
         return;
     }
     else
@@ -180,18 +180,18 @@ void FPSLimiterRenderModule::Execute(double deltaTime, cauldron::CommandList* pC
         const double MaxTargetFrameTimeUs = 200000.0;  // 200ms 5fps to match CPU limiter UI.
         const double MinTargetFrameTimeUs = 50.0;
 
-        if (m_FrameTimeHistoryCount >= _countof(m_FrameTimeHistory))
+        if (m_FrameTimeHistoryCount >= std::size(m_FrameTimeHistory))
         {
-            m_FrameTimeHistorySum -= m_FrameTimeHistory[m_FrameTimeHistoryCount % _countof(m_FrameTimeHistory)];
+            m_FrameTimeHistorySum -= m_FrameTimeHistory[m_FrameTimeHistoryCount % std::size(m_FrameTimeHistory)];
         }
 
         m_FrameTimeHistorySum += lastFrameTimeUs;
-        m_FrameTimeHistory[m_FrameTimeHistoryCount % _countof(m_FrameTimeHistory)] = lastFrameTimeUs;
+        m_FrameTimeHistory[m_FrameTimeHistoryCount % std::size(m_FrameTimeHistory)] = lastFrameTimeUs;
         m_FrameTimeHistoryCount++;
 
         uint64_t targetFrameTimeUs = 1000000 / m_TargetFPS;
 
-        double recentFrameTimeMean = double(m_FrameTimeHistorySum) / double(std::min(m_FrameTimeHistoryCount, _countof(m_FrameTimeHistory)));
+        double recentFrameTimeMean = double(m_FrameTimeHistorySum) / double(std::min(m_FrameTimeHistoryCount, std::size(m_FrameTimeHistory)));
 
         double clampedTargetFrameTimeMs = std::max(std::min(double(targetFrameTimeUs), MaxTargetFrameTimeUs), MinTargetFrameTimeUs);
         double deltaRatio               = (recentFrameTimeMean - clampedTargetFrameTimeMs) / clampedTargetFrameTimeMs;

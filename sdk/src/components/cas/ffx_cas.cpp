@@ -1,7 +1,7 @@
 // This file is part of the FidelityFX SDK.
 //
 // Copyright (C) 2024 Advanced Micro Devices, Inc.
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files(the "Software"), to deal
 // in the Software without restriction, including without limitation the rights
@@ -21,7 +21,7 @@
 // THE SOFTWARE.
 
 #include <string.h>  // for memset
-#include <stdlib.h>  // for _countof
+#include <stdlib.h>  // for std::size
 #include <cmath>     // for fabs, abs, sinf, sqrt, etc.
 
 #ifdef __clang__
@@ -60,12 +60,12 @@ static FfxErrorCode patchResourceBindings(FfxPipelineState* inoutPipeline)
     for (uint32_t srvIndex = 0; srvIndex < inoutPipeline->srvTextureCount; ++srvIndex)
     {
         int32_t mapIndex = 0;
-        for (mapIndex = 0; mapIndex < _countof(s_SrvResourceBindingTable); ++mapIndex)
+        for (mapIndex = 0; mapIndex < std::size(s_SrvResourceBindingTable); ++mapIndex)
         {
             if (0 == wcscmp(s_SrvResourceBindingTable[mapIndex].name, inoutPipeline->srvTextureBindings[srvIndex].name))
                 break;
         }
-        if (mapIndex == _countof(s_SrvResourceBindingTable))
+        if (mapIndex == std::size(s_SrvResourceBindingTable))
             return FFX_ERROR_INVALID_ARGUMENT;
 
         inoutPipeline->srvTextureBindings[srvIndex].resourceIdentifier = s_SrvResourceBindingTable[mapIndex].index;
@@ -74,12 +74,12 @@ static FfxErrorCode patchResourceBindings(FfxPipelineState* inoutPipeline)
     for (uint32_t uavIndex = 0; uavIndex < inoutPipeline->uavTextureCount; ++uavIndex)
     {
         int32_t mapIndex = 0;
-        for (mapIndex = 0; mapIndex < _countof(s_UavResourceBindingTable); ++mapIndex)
+        for (mapIndex = 0; mapIndex < std::size(s_UavResourceBindingTable); ++mapIndex)
         {
             if (0 == wcscmp(s_UavResourceBindingTable[mapIndex].name, inoutPipeline->uavTextureBindings[uavIndex].name))
                 break;
         }
-        if (mapIndex == _countof(s_UavResourceBindingTable))
+        if (mapIndex == std::size(s_UavResourceBindingTable))
             return FFX_ERROR_INVALID_ARGUMENT;
 
         inoutPipeline->uavTextureBindings[uavIndex].resourceIdentifier = s_UavResourceBindingTable[mapIndex].index;
@@ -88,12 +88,12 @@ static FfxErrorCode patchResourceBindings(FfxPipelineState* inoutPipeline)
     for (uint32_t cbIndex = 0; cbIndex < inoutPipeline->constCount; ++cbIndex)
     {
         int32_t mapIndex = 0;
-        for (mapIndex = 0; mapIndex < _countof(s_CbResourceBindingTable); ++mapIndex)
+        for (mapIndex = 0; mapIndex < std::size(s_CbResourceBindingTable); ++mapIndex)
         {
             if (0 == wcscmp(s_CbResourceBindingTable[mapIndex].name, inoutPipeline->constantBufferBindings[cbIndex].name))
                 break;
         }
-        if (mapIndex == _countof(s_CbResourceBindingTable))
+        if (mapIndex == std::size(s_CbResourceBindingTable))
             return FFX_ERROR_INVALID_ARGUMENT;
 
         inoutPipeline->constantBufferBindings[cbIndex].resourceIdentifier = s_CbResourceBindingTable[mapIndex].index;
@@ -138,11 +138,12 @@ static FfxErrorCode createPipelineStates(FfxCasContext_Private* context)
     FFX_ASSERT(context);
 
     FfxPipelineDescription pipelineDescription = {};
-    pipelineDescription.contextFlags = context->contextDescription.flags;
+    pipelineDescription.contextFlags           = context->contextDescription.flags;
 
     pipelineDescription.samplerCount  = 1;
-    FfxSamplerDescription samplers[1] = {{FFX_FILTER_TYPE_MINMAGMIP_POINT, FFX_ADDRESS_MODE_CLAMP, FFX_ADDRESS_MODE_CLAMP, FFX_ADDRESS_MODE_CLAMP, FFX_BIND_COMPUTE_SHADER_STAGE}};
-    pipelineDescription.samplers      = samplers;
+    FfxSamplerDescription samplers[1] = {
+        {FFX_FILTER_TYPE_MINMAGMIP_POINT, FFX_ADDRESS_MODE_CLAMP, FFX_ADDRESS_MODE_CLAMP, FFX_ADDRESS_MODE_CLAMP, FFX_BIND_COMPUTE_SHADER_STAGE}};
+    pipelineDescription.samplers = samplers;
 
     pipelineDescription.rootConstantBufferCount     = 1;
     FfxRootConstantDescription rootConstantsDecs[1] = {{sizeof(CasConstants) / sizeof(uint32_t), FFX_BIND_COMPUTE_SHADER_STAGE}};
@@ -169,13 +170,14 @@ static FfxErrorCode createPipelineStates(FfxCasContext_Private* context)
     FfxCasColorSpaceConversion colorSpaceConversion = context->contextDescription.colorSpaceConversion;
 
     // Set up pipeline descriptors (basically RootSignature and binding)
-    wcscpy_s(pipelineDescription.name, L"CAS_SHARPEN");
+    wcscpy(pipelineDescription.name, L"CAS_SHARPEN");
     FFX_VALIDATE(context->contextDescription.backendInterface.fpCreatePipeline(
         &context->contextDescription.backendInterface,
         FFX_EFFECT_CAS,
         FFX_CAS_PASS_SHARPEN,
         getPipelinePermutationFlags(contextFlags, FFX_CAS_PASS_SHARPEN, colorSpaceConversion, supportedFP16, canForceWave64),
-        &pipelineDescription, context->effectContextId,
+        &pipelineDescription,
+        context->effectContextId,
         &context->pipelineSharpen));
 
     // For each pipeline: re-route/fix-up IDs based on names
@@ -188,16 +190,16 @@ static void scheduleDispatch(
     FfxCasContext_Private* context, const FfxCasDispatchDescription*, const FfxPipelineState* pipeline, uint32_t dispatchX, uint32_t dispatchY)
 {
     FfxGpuJobDescription dispatchJob = {FFX_GPU_JOB_COMPUTE};
-    wcscpy_s(dispatchJob.jobLabel, pipeline->name);
+    wcscpy(dispatchJob.jobLabel, pipeline->name);
 
     for (uint32_t currentShaderResourceViewIndex = 0; currentShaderResourceViewIndex < pipeline->srvTextureCount; ++currentShaderResourceViewIndex)
     {
-        const uint32_t            currentResourceId               = pipeline->srvTextureBindings[currentShaderResourceViewIndex].resourceIdentifier;
-        const FfxResourceInternal currentResource                 = context->srvResources[currentResourceId];
+        const uint32_t            currentResourceId = pipeline->srvTextureBindings[currentShaderResourceViewIndex].resourceIdentifier;
+        const FfxResourceInternal currentResource   = context->srvResources[currentResourceId];
         dispatchJob.computeJobDescriptor.srvTextures[currentShaderResourceViewIndex].resource = currentResource;
 #ifdef FFX_DEBUG
-        wcscpy_s(dispatchJob.computeJobDescriptor.srvTextures[currentShaderResourceViewIndex].name,
-                 pipeline->srvTextureBindings[currentShaderResourceViewIndex].name);
+        wcscpy(dispatchJob.computeJobDescriptor.srvTextures[currentShaderResourceViewIndex].name,
+               pipeline->srvTextureBindings[currentShaderResourceViewIndex].name);
 #endif
     }
 
@@ -205,12 +207,12 @@ static void scheduleDispatch(
     {
         const uint32_t currentResourceId = pipeline->uavTextureBindings[currentUnorderedAccessViewIndex].resourceIdentifier;
 #ifdef FFX_DEBUG
-        wcscpy_s(dispatchJob.computeJobDescriptor.uavTextures[currentUnorderedAccessViewIndex].name,
-                 pipeline->uavTextureBindings[currentUnorderedAccessViewIndex].name);
+        wcscpy(dispatchJob.computeJobDescriptor.uavTextures[currentUnorderedAccessViewIndex].name,
+               pipeline->uavTextureBindings[currentUnorderedAccessViewIndex].name);
 #endif
-        const FfxResourceInternal currentResource                     = context->uavResources[currentResourceId];
+        const FfxResourceInternal currentResource                                              = context->uavResources[currentResourceId];
         dispatchJob.computeJobDescriptor.uavTextures[currentUnorderedAccessViewIndex].resource = currentResource;
-        dispatchJob.computeJobDescriptor.uavTextures[currentUnorderedAccessViewIndex].mip = 0;
+        dispatchJob.computeJobDescriptor.uavTextures[currentUnorderedAccessViewIndex].mip      = 0;
     }
 
     dispatchJob.computeJobDescriptor.dimensions[0] = dispatchX;
@@ -218,11 +220,10 @@ static void scheduleDispatch(
     dispatchJob.computeJobDescriptor.dimensions[2] = 1;
     dispatchJob.computeJobDescriptor.pipeline      = *pipeline;
 #ifdef FFX_DEBUG
-    wcscpy_s(dispatchJob.computeJobDescriptor.cbNames[0], pipeline->constantBufferBindings[0].name);
+    wcscpy(dispatchJob.computeJobDescriptor.cbNames[0], pipeline->constantBufferBindings[0].name);
 #endif
     dispatchJob.computeJobDescriptor.cbs[0] = context->constantBuffer;
 
-    
     context->contextDescription.backendInterface.fpScheduleGpuJob(&context->contextDescription.backendInterface, &dispatchJob);
 }
 
@@ -232,11 +233,15 @@ static FfxErrorCode casDispatch(FfxCasContext_Private* context, const FfxCasDisp
     FfxCommandList commandList = params->commandList;
 
     // Register resources for frame
-    context->contextDescription.backendInterface.fpRegisterResource(
-        &context->contextDescription.backendInterface, &params->color, context->effectContextId, &context->srvResources[FFX_CAS_RESOURCE_IDENTIFIER_INPUT_COLOR]);
+    context->contextDescription.backendInterface.fpRegisterResource(&context->contextDescription.backendInterface,
+                                                                    &params->color,
+                                                                    context->effectContextId,
+                                                                    &context->srvResources[FFX_CAS_RESOURCE_IDENTIFIER_INPUT_COLOR]);
 
-    context->contextDescription.backendInterface.fpRegisterResource(
-        &context->contextDescription.backendInterface, &params->output, context->effectContextId, &context->uavResources[FFX_CAS_RESOURCE_IDENTIFIER_OUTPUT_COLOR]);
+    context->contextDescription.backendInterface.fpRegisterResource(&context->contextDescription.backendInterface,
+                                                                    &params->output,
+                                                                    context->effectContextId,
+                                                                    &context->uavResources[FFX_CAS_RESOURCE_IDENTIFIER_OUTPUT_COLOR]);
 
     // This value is the image region dimension that each thread group of the CAS shader operates on
     static const int threadGroupWorkRegionDim = 16;
@@ -254,7 +259,7 @@ static FfxErrorCode casDispatch(FfxCasContext_Private* context, const FfxCasDisp
 
     context->contextDescription.backendInterface.fpStageConstantBufferDataFunc(
         &context->contextDescription.backendInterface, &context->constants, sizeof(CasConstants), &context->constantBuffer);
-    
+
     scheduleDispatch(context, params, &context->pipelineSharpen, dispatchX, dispatchY);
 
     // Execute all the work for the frame
@@ -284,13 +289,13 @@ static FfxErrorCode casCreate(FfxCasContext_Private* context, const FfxCasContex
     context->constantBuffer.num32BitEntries = sizeof(CasConstants) / sizeof(uint32_t);
 
     // Create the context.
-    FfxErrorCode errorCode =
-        context->contextDescription.backendInterface.fpCreateBackendContext(&context->contextDescription.backendInterface, FFX_EFFECT_CAS, nullptr, &context->effectContextId);
+    FfxErrorCode errorCode = context->contextDescription.backendInterface.fpCreateBackendContext(
+        &context->contextDescription.backendInterface, FFX_EFFECT_CAS, nullptr, &context->effectContextId);
     FFX_RETURN_ON_ERROR(errorCode == FFX_OK, errorCode);
 
     // Call out for device caps.
-    errorCode = context->contextDescription.backendInterface.fpGetDeviceCapabilities(
-        &context->contextDescription.backendInterface, &context->deviceCapabilities);
+    errorCode =
+        context->contextDescription.backendInterface.fpGetDeviceCapabilities(&context->contextDescription.backendInterface, &context->deviceCapabilities);
     FFX_RETURN_ON_ERROR(errorCode == FFX_OK, errorCode);
 
     // Clear the SRV resources to NULL.
@@ -356,7 +361,7 @@ FfxErrorCode ffxCasContextCreate(FfxCasContext* context, const FfxCasContextDesc
 FfxErrorCode ffxCasContextDestroy(FfxCasContext* context)
 {
     FFX_RETURN_ON_ERROR(context, FFX_ERROR_INVALID_POINTER);
-    
+
     // Destroy the context.
     FfxCasContext_Private* contextPrivate = (FfxCasContext_Private*)(context);
     const FfxErrorCode     errorCode      = casRelease(contextPrivate);

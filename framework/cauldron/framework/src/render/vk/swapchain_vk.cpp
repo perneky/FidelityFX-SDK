@@ -1,7 +1,7 @@
 // This file is part of the FidelityFX SDK.
 //
 // Copyright (C) 2024 Advanced Micro Devices, Inc.
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files(the "Software"), to deal
 // in the Software without restriction, including without limitation the rights
@@ -45,13 +45,14 @@ using namespace std::experimental;
 
 namespace cauldron
 {
-    struct SwapChainSupportDetails {
-        VkSurfaceCapabilities2KHR capabilities2 = {};
-        VkPhysicalDeviceSurfaceInfo2KHR physicalDeviceSurfaceInfo2 = {};
+    struct SwapChainSupportDetails
+    {
+        VkSurfaceCapabilities2KHR                capabilities2                          = {};
+        VkPhysicalDeviceSurfaceInfo2KHR          physicalDeviceSurfaceInfo2             = {};
         VkDisplayNativeHdrSurfaceCapabilitiesAMD displayNativeHdrSurfaceCapabilitiesAMD = {};
         VkSwapchainDisplayNativeHdrCreateInfoAMD swapchainDisplayNativeHdrCreateInfoAMD = {};
-        std::vector<VkSurfaceFormat2KHR> formats2;
-        std::vector<VkPresentModeKHR> presentModes;
+        std::vector<VkSurfaceFormat2KHR>         formats2;
+        std::vector<VkPresentModeKHR>            presentModes;
     };
 
     void QuerySwapChainSupport(VkPhysicalDevice PhysicalDevice, VkSurfaceKHR surface, SwapChainSupportDetails& details)
@@ -91,7 +92,7 @@ namespace cauldron
         if (formatCount != 0)
         {
             details.formats2.resize(formatCount);
-            for(auto& surfaceFormat : details.formats2)
+            for (auto& surfaceFormat : details.formats2)
             {
                 surfaceFormat.sType = VK_STRUCTURE_TYPE_SURFACE_FORMAT_2_KHR;
                 surfaceFormat.pNext = nullptr;
@@ -168,7 +169,7 @@ namespace cauldron
 
         if (vsync)
         {
-            if (search(VK_PRESENT_MODE_FIFO_RELAXED_KHR)) // adaptive vsync
+            if (search(VK_PRESENT_MODE_FIFO_RELAXED_KHR))  // adaptive vsync
             {
                 return VK_PRESENT_MODE_FIFO_RELAXED_KHR;
             }
@@ -196,15 +197,15 @@ namespace cauldron
 
     VkSurfaceTransformFlagBitsKHR ChooseSurfaceTransform(const VkSurfaceCapabilitiesKHR capabilities)
     {
-        return (capabilities.supportedTransforms & VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR) ? VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR : capabilities.currentTransform;
+        return (capabilities.supportedTransforms & VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR) ? VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR
+                                                                                          : capabilities.currentTransform;
     }
 
     VkCompositeAlphaFlagBitsKHR ChooseCompositeAlpha(const VkSurfaceCapabilitiesKHR capabilities)
     {
         VkCompositeAlphaFlagBitsKHR compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
         // in the order of preference
-        VkCompositeAlphaFlagBitsKHR compositeAlphaFlags[4] =
-        {
+        VkCompositeAlphaFlagBitsKHR compositeAlphaFlags[4] = {
             VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,
             VK_COMPOSITE_ALPHA_PRE_MULTIPLIED_BIT_KHR,
             VK_COMPOSITE_ALPHA_POST_MULTIPLIED_BIT_KHR,
@@ -320,8 +321,8 @@ namespace cauldron
         // create semaphores to acquire the swapchain images
         m_ImageAvailableSemaphores.resize(pConfig->BackBufferCount + 1);
         VkSemaphoreCreateInfo info = {};
-        info.sType             = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-        info.flags             = 0;
+        info.sType                 = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+        info.flags                 = 0;
         for (uint8_t i = 0; i < pConfig->BackBufferCount + 1; ++i)
         {
             VkResult res = vkCreateSemaphore(pDevice->VKDevice(), &info, nullptr, &m_ImageAvailableSemaphores[i]);
@@ -352,11 +353,11 @@ namespace cauldron
 
     void SwapChainInternal::CreateSwapChain(uint32_t width, uint32_t height)
     {
-        m_Width = width;
-        m_Height = height;
+        m_Width        = width;
+        m_Height       = height;
         m_CurrentVSync = m_VSyncEnabled;
 
-        DeviceInternal* pDevice = GetDevice()->GetImpl();
+        DeviceInternal*       pDevice = GetDevice()->GetImpl();
         const CauldronConfig* pConfig = GetConfig();
 
         m_BackBufferFences.resize(pConfig->BackBufferCount);
@@ -365,26 +366,28 @@ namespace cauldron
 
         // query the swapchain capabilities to find the correct format and the correct present mode
         SwapChainSupportDetails swapChainSupport = {};
-        QuerySwapChainSupport(pDevice->VKPhysicalDevice(), pDevice->GetSurface(), swapChainSupport);;
+        QuerySwapChainSupport(pDevice->VKPhysicalDevice(), pDevice->GetSurface(), swapChainSupport);
+        ;
 
         // Find all HDR modes supported by current display and pick surface format
         EnumerateDisplayModesAndFormats(swapChainSupport.formats2);
 
-        SwapChainCreationParams swapchainCreationParams                   = {};
-        swapchainCreationParams.swapchainCreateInfo                       = {};
-        swapchainCreationParams.swapchainCreateInfo.sType                 = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
-        swapchainCreationParams.swapchainCreateInfo.pNext                 = wcsstr(pDevice->GetDeviceName(), L"AMD") != nullptr ? &swapChainSupport.swapchainDisplayNativeHdrCreateInfoAMD : nullptr;
-        swapchainCreationParams.swapchainCreateInfo.flags                 = 0;
-        swapchainCreationParams.swapchainCreateInfo.surface               = pDevice->GetSurface();
-        swapchainCreationParams.swapchainCreateInfo.imageFormat           = m_SurfaceFormat.format;
-        swapchainCreationParams.swapchainCreateInfo.minImageCount         = pConfig->BackBufferCount;
-        swapchainCreationParams.swapchainCreateInfo.imageColorSpace       = m_SurfaceFormat.colorSpace;
-        swapchainCreationParams.swapchainCreateInfo.imageExtent.width     = m_Width;
-        swapchainCreationParams.swapchainCreateInfo.imageExtent.height    = m_Height;
-        swapchainCreationParams.swapchainCreateInfo.imageArrayLayers      = 1;
-        swapchainCreationParams.swapchainCreateInfo.imageUsage            = VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT |
-                                                                            VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |
-                                                                            VK_IMAGE_USAGE_SAMPLED_BIT;  // render to texture, copy and shader access
+        SwapChainCreationParams swapchainCreationParams   = {};
+        swapchainCreationParams.swapchainCreateInfo       = {};
+        swapchainCreationParams.swapchainCreateInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
+        swapchainCreationParams.swapchainCreateInfo.pNext =
+            wcsstr(pDevice->GetDeviceName(), L"AMD") != nullptr ? &swapChainSupport.swapchainDisplayNativeHdrCreateInfoAMD : nullptr;
+        swapchainCreationParams.swapchainCreateInfo.flags              = 0;
+        swapchainCreationParams.swapchainCreateInfo.surface            = pDevice->GetSurface();
+        swapchainCreationParams.swapchainCreateInfo.imageFormat        = m_SurfaceFormat.format;
+        swapchainCreationParams.swapchainCreateInfo.minImageCount      = pConfig->BackBufferCount;
+        swapchainCreationParams.swapchainCreateInfo.imageColorSpace    = m_SurfaceFormat.colorSpace;
+        swapchainCreationParams.swapchainCreateInfo.imageExtent.width  = m_Width;
+        swapchainCreationParams.swapchainCreateInfo.imageExtent.height = m_Height;
+        swapchainCreationParams.swapchainCreateInfo.imageArrayLayers   = 1;
+        swapchainCreationParams.swapchainCreateInfo.imageUsage         = VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT |
+                                                                 VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |
+                                                                 VK_IMAGE_USAGE_SAMPLED_BIT;  // render to texture, copy and shader access
         swapchainCreationParams.swapchainCreateInfo.imageSharingMode      = VK_SHARING_MODE_EXCLUSIVE;
         swapchainCreationParams.swapchainCreateInfo.queueFamilyIndexCount = 0;
         swapchainCreationParams.swapchainCreateInfo.pQueueFamilyIndices   = nullptr;
@@ -393,12 +396,12 @@ namespace cauldron
         swapchainCreationParams.swapchainCreateInfo.presentMode           = ChooseSwapPresentMode(swapChainSupport.presentModes, m_VSyncEnabled);
         swapchainCreationParams.swapchainCreateInfo.clipped               = true;
         swapchainCreationParams.swapchainCreateInfo.oldSwapchain          = VK_NULL_HANDLE;
-        
+
         SwapChain* pSwapchain = this;
         pDevice->CreateSwapChain(pSwapchain, swapchainCreationParams, CommandQueue::Graphics);
 
         // TODO: fix that. Keep all structures in pNext
-        m_CreateInfo = swapchainCreationParams.swapchainCreateInfo;
+        m_CreateInfo       = swapchainCreationParams.swapchainCreateInfo;
         m_CreateInfo.pNext = nullptr;
 
         // Can only do this for Freesync Premium Pro HDR display on AMD hardware
@@ -432,7 +435,7 @@ namespace cauldron
 
     void SwapChainInternal::CreateSwapChainRenderTargets()
     {
-        DeviceInternal* pDevice = GetDevice()->GetImpl();
+        DeviceInternal*       pDevice = GetDevice()->GetImpl();
         const CauldronConfig* pConfig = GetConfig();
 
         // we are querying the swapchain count so the next call doesn't generate a validation warning
@@ -451,19 +454,19 @@ namespace cauldron
 
         // create a fake VkImageCreateInfo to put in the resource
         VkImageCreateInfo imageInfo = {};
-        imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-        imageInfo.pNext = nullptr;
-        imageInfo.flags = 0;
-        imageInfo.imageType = VK_IMAGE_TYPE_2D;
-        imageInfo.format = m_SurfaceFormat.format;
-        imageInfo.extent.width = m_Width;
-        imageInfo.extent.height = m_Height;
-        imageInfo.extent.depth = 1;
-        imageInfo.mipLevels = 1;
-        imageInfo.arrayLayers = 1;
-        imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
-        imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
-        imageInfo.usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+        imageInfo.sType             = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+        imageInfo.pNext             = nullptr;
+        imageInfo.flags             = 0;
+        imageInfo.imageType         = VK_IMAGE_TYPE_2D;
+        imageInfo.format            = m_SurfaceFormat.format;
+        imageInfo.extent.width      = m_Width;
+        imageInfo.extent.height     = m_Height;
+        imageInfo.extent.depth      = 1;
+        imageInfo.mipLevels         = 1;
+        imageInfo.arrayLayers       = 1;
+        imageInfo.samples           = VK_SAMPLE_COUNT_1_BIT;
+        imageInfo.tiling            = VK_IMAGE_TILING_OPTIMAL;
+        imageInfo.usage             = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 
         ResourceFormat format = ConvertFormat(m_SurfaceFormat.format);
 
@@ -474,9 +477,9 @@ namespace cauldron
             pDevice->SetResourceName(VK_OBJECT_TYPE_IMAGE, (uint64_t)images[i], name.c_str());
 
             GPUResourceInitParams initParams = {};
-            initParams.imageInfo = imageInfo;
-            initParams.image = images[i];
-            initParams.type = GPUResourceType::Swapchain;
+            initParams.imageInfo             = imageInfo;
+            initParams.image                 = images[i];
+            initParams.type                  = GPUResourceType::Swapchain;
 
             GPUResource* pResource = GPUResource::CreateGPUResource(name.c_str(), this, ResourceState::Present, &initParams, true);
             gpuResourceArray.push_back(pResource);
@@ -493,7 +496,8 @@ namespace cauldron
         if (m_pSwapChainRTV == nullptr)
             GetResourceViewAllocator()->AllocateCPURenderViews(&m_pSwapChainRTV, backBufferCount);
         for (uint32_t i = 0; i < backBufferCount; ++i)
-            m_pSwapChainRTV->BindTextureResource(m_pRenderTarget->GetResource(i), m_pRenderTarget->GetDesc(), ResourceViewType::RTV, ViewDimension::Texture2D, 0, 1, 0, i);
+            m_pSwapChainRTV->BindTextureResource(
+                m_pRenderTarget->GetResource(i), m_pRenderTarget->GetDesc(), ResourceViewType::RTV, ViewDimension::Texture2D, 0, 1, 0, i);
     }
 
     void SwapChainInternal::WaitForSwapChain()
@@ -518,8 +522,8 @@ namespace cauldron
         {
             // Flush everything before resizing resources (can't have anything in the pipes)
             CauldronAssert(ASSERT_ERROR,
-                            std::this_thread::get_id() == GetFramework()->MainThreadID(),
-                            L"Cauldron: OnResize: Expecting OnResize to be called on MainThread. Not thread safe!");
+                           std::this_thread::get_id() == GetFramework()->MainThreadID(),
+                           L"Cauldron: OnResize: Expecting OnResize to be called on MainThread. Not thread safe!");
             GetDevice()->FlushAllCommandQueues();
 
             // Resize swapchain (only takes display resolution)
@@ -534,7 +538,7 @@ namespace cauldron
 
         // wait for the last submission to the queue fo finish
         pDevice->WaitOnQueue(m_BackBufferFences[m_CurrentBackBuffer], CommandQueue::Graphics);
-        
+
         // the command lists will wait for the swapchain image to be available
 
         m_pRenderTarget->SetCurrentBackBufferIndex(imageIndex);
@@ -544,7 +548,7 @@ namespace cauldron
 
     void SwapChainInternal::Present()
     {
-        uint64_t waitValue = GetDevice()->PresentSwapChain(this);
+        uint64_t waitValue                      = GetDevice()->PresentSwapChain(this);
         m_BackBufferFences[m_CurrentBackBuffer] = waitValue;
     }
 
@@ -569,19 +573,19 @@ namespace cauldron
         imageCreateInfo.queueFamilyIndexCount = 0;
         imageCreateInfo.pQueueFamilyIndices   = nullptr;
         imageCreateInfo.initialLayout         = VK_IMAGE_LAYOUT_UNDEFINED;
-        
+
         VmaAllocationCreateInfo allocationCreateInfo = {};
         allocationCreateInfo.usage                   = VMA_MEMORY_USAGE_UNKNOWN;
         allocationCreateInfo.requiredFlags           = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
 
-        DeviceInternal* pDevice = GetDevice()->GetImpl();
-        VkImage       image      = VK_NULL_HANDLE;
-        VmaAllocation allocation = VK_NULL_HANDLE;
-        VkResult res = vmaCreateImage(pDevice->GetVmaAllocator(), &imageCreateInfo, &allocationCreateInfo, &image, &allocation, nullptr);
+        DeviceInternal* pDevice    = GetDevice()->GetImpl();
+        VkImage         image      = VK_NULL_HANDLE;
+        VmaAllocation   allocation = VK_NULL_HANDLE;
+        VkResult        res        = vmaCreateImage(pDevice->GetVmaAllocator(), &imageCreateInfo, &allocationCreateInfo, &image, &allocation, nullptr);
         CauldronAssert(ASSERT_ERROR, res == VK_SUCCESS, L"Unable to create buffer for dumping swapchain");
 
         CommandList* pCmdList = pDevice->CreateCommandList(L"SwapchainToFileCL", CommandQueue::Graphics);
-        
+
         // transition swapchain and dest image
         VkImageMemoryBarrier imageBarriers[2];
         // swapchain
@@ -617,7 +621,7 @@ namespace cauldron
 
         vkCmdPipelineBarrier(
             pCmdList->GetImpl()->VKCmdBuffer(), VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 2, imageBarriers);
-        
+
         VkImageCopy copyRegion                   = {};
         copyRegion.srcSubresource.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
         copyRegion.srcSubresource.mipLevel       = 0;
@@ -641,22 +645,21 @@ namespace cauldron
                        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
                        1,
                        &copyRegion);
-        
+
         // transition swapchain back to present
-        imageBarriers[0].srcAccessMask                   = VK_ACCESS_TRANSFER_READ_BIT;
-        imageBarriers[0].dstAccessMask                   = VK_ACCESS_MEMORY_READ_BIT;
-        imageBarriers[0].oldLayout                       = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-        imageBarriers[0].newLayout                       = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+        imageBarriers[0].srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+        imageBarriers[0].dstAccessMask = VK_ACCESS_MEMORY_READ_BIT;
+        imageBarriers[0].oldLayout     = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+        imageBarriers[0].newLayout     = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 
         // transition dest image
-        imageBarriers[1].srcAccessMask                   = VK_ACCESS_TRANSFER_WRITE_BIT;
-        imageBarriers[1].dstAccessMask                   = VK_ACCESS_MEMORY_READ_BIT;
-        imageBarriers[1].oldLayout                       = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-        imageBarriers[1].newLayout                       = VK_IMAGE_LAYOUT_GENERAL;
+        imageBarriers[1].srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+        imageBarriers[1].dstAccessMask = VK_ACCESS_MEMORY_READ_BIT;
+        imageBarriers[1].oldLayout     = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+        imageBarriers[1].newLayout     = VK_IMAGE_LAYOUT_GENERAL;
 
         vkCmdPipelineBarrier(
             pCmdList->GetImpl()->VKCmdBuffer(), VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 2, imageBarriers);
-
 
         CloseCmdList(pCmdList);
 
@@ -665,7 +668,7 @@ namespace cauldron
         pDevice->ExecuteCommandListsImmediate(lists, CommandQueue::Graphics);
 
         void* pData = nullptr;
-        res = vmaMapMemory(pDevice->GetVmaAllocator(), allocation, &pData);
+        res         = vmaMapMemory(pDevice->GetVmaAllocator(), allocation, &pData);
         CauldronAssert(ASSERT_ERROR, res == VK_SUCCESS, L"Unable to map buffer for dumping swapchain");
         stbi_write_jpg(WStringToString(filePath.c_str()).c_str(), (int)swapchainImageInfo.extent.width, (int)swapchainImageInfo.extent.height, 4, pData, 100);
         vmaUnmapMemory(pDevice->GetVmaAllocator(), allocation);
@@ -707,7 +710,7 @@ namespace cauldron
         CauldronAssert(ASSERT_WARNING,
                        overrideFormat == VK_FORMAT_UNDEFINED || m_SurfaceFormat.format == overrideFormat,
                        L"The requested swapchain format from the config file cannot be used for present/display. Override is ignored.");
-        
+
         // Set format based on display mode
         m_SwapChainFormat = ConvertFormat(m_SurfaceFormat.format);
     }
@@ -722,7 +725,8 @@ namespace cauldron
         hdrMetadata.sType            = VK_STRUCTURE_TYPE_HDR_METADATA_EXT;
         hdrMetadata.pNext            = nullptr;
 
-        VkDisplayNativeHdrSurfaceCapabilitiesAMD* displayNativeHdrSurfaceCapabilitiesAMD = reinterpret_cast<VkDisplayNativeHdrSurfaceCapabilitiesAMD*>(capabilities2.pNext);
+        VkDisplayNativeHdrSurfaceCapabilitiesAMD* displayNativeHdrSurfaceCapabilitiesAMD =
+            reinterpret_cast<VkDisplayNativeHdrSurfaceCapabilitiesAMD*>(capabilities2.pNext);
         displayNativeHdrSurfaceCapabilitiesAMD->pNext = &hdrMetadata;
 
         // Must requry FS HDR display capabilities
@@ -745,22 +749,22 @@ namespace cauldron
     void SwapChainInternal::SetHDRMetadataAndColorspace()
     {
         VkHdrMetadataEXT hdrMetadata = {};
-        hdrMetadata.sType = VK_STRUCTURE_TYPE_HDR_METADATA_EXT;
-        hdrMetadata.pNext = nullptr;
+        hdrMetadata.sType            = VK_STRUCTURE_TYPE_HDR_METADATA_EXT;
+        hdrMetadata.pNext            = nullptr;
 
-        hdrMetadata.displayPrimaryRed.x = m_HDRMetadata.RedPrimary[0];
-        hdrMetadata.displayPrimaryRed.y = m_HDRMetadata.RedPrimary[1];
+        hdrMetadata.displayPrimaryRed.x   = m_HDRMetadata.RedPrimary[0];
+        hdrMetadata.displayPrimaryRed.y   = m_HDRMetadata.RedPrimary[1];
         hdrMetadata.displayPrimaryGreen.x = m_HDRMetadata.GreenPrimary[0];
         hdrMetadata.displayPrimaryGreen.y = m_HDRMetadata.GreenPrimary[1];
-        hdrMetadata.displayPrimaryBlue.x = m_HDRMetadata.BluePrimary[0];
-        hdrMetadata.displayPrimaryBlue.y = m_HDRMetadata.BluePrimary[1];
-        hdrMetadata.whitePoint.x = m_HDRMetadata.WhitePoint[0];
-        hdrMetadata.whitePoint.y = m_HDRMetadata.WhitePoint[1];
+        hdrMetadata.displayPrimaryBlue.x  = m_HDRMetadata.BluePrimary[0];
+        hdrMetadata.displayPrimaryBlue.y  = m_HDRMetadata.BluePrimary[1];
+        hdrMetadata.whitePoint.x          = m_HDRMetadata.WhitePoint[0];
+        hdrMetadata.whitePoint.y          = m_HDRMetadata.WhitePoint[1];
 
         hdrMetadata.maxLuminance = m_HDRMetadata.MaxLuminance;
         hdrMetadata.minLuminance = m_HDRMetadata.MinLuminance;
 
-        hdrMetadata.maxContentLightLevel = m_HDRMetadata.MaxContentLightLevel;
+        hdrMetadata.maxContentLightLevel      = m_HDRMetadata.MaxContentLightLevel;
         hdrMetadata.maxFrameAverageLightLevel = m_HDRMetadata.MaxFrameAverageLightLevel;
 
         DeviceInternal* pDevice = GetDevice()->GetImpl();
@@ -772,8 +776,8 @@ namespace cauldron
         *pLastPresentCount = static_cast<UINT>(GetDevice()->GetImpl()->GetLastPresentCountFFX(m_SwapChain));
     }
 
-    #include <dwmapi.h>
-    #pragma comment(lib, "Dwmapi.lib")
+#include <dwmapi.h>
+#pragma comment(lib, "Dwmapi.lib")
 
     void SwapChainInternal::GetRefreshRate(double* outRefreshRate)
     {
@@ -781,7 +785,7 @@ namespace cauldron
         *outRefreshRate = 1000.0;
 
         bool bIsPotentialDirectFlip = false;
-        bool isFullscreen = (GetFramework()->GetImpl()->GetPresentationMode() == PRESENTATIONMODE_BORDERLESS_FULLSCREEN);
+        bool isFullscreen           = (GetFramework()->GetImpl()->GetPresentationMode() == PRESENTATIONMODE_BORDERLESS_FULLSCREEN);
 
         if (!isFullscreen)
         {
@@ -813,8 +817,8 @@ namespace cauldron
                     DISPLAYCONFIG_PATH_INFO pathArray[8];
                     DISPLAYCONFIG_MODE_INFO modeInfoArray[32];
 
-                    CauldronAssert(ASSERT_CRITICAL, _countof(pathArray) >= numPathArrayElements, L"Too many elements");
-                    CauldronAssert(ASSERT_CRITICAL, _countof(modeInfoArray) >= numModeInfoArrayElements, L"Too many elements");
+                    CauldronAssert(ASSERT_CRITICAL, std::size(pathArray) >= numPathArrayElements, L"Too many elements");
+                    CauldronAssert(ASSERT_CRITICAL, std::size(modeInfoArray) >= numModeInfoArrayElements, L"Too many elements");
 
                     if (QueryDisplayConfig(QDC_ONLY_ACTIVE_PATHS, &numPathArrayElements, pathArray, &numModeInfoArrayElements, modeInfoArray, nullptr) ==
                         ERROR_SUCCESS)
@@ -860,6 +864,6 @@ namespace cauldron
         }
     }
 
-} // namespace cauldron
+}  // namespace cauldron
 
-#endif // #if defined(_VK)
+#endif  // #if defined(_VK)

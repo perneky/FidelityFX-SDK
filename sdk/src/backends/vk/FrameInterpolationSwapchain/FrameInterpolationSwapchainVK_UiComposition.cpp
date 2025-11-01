@@ -1,7 +1,7 @@
 // This file is part of the FidelityFX SDK.
 //
 // Copyright (C) 2024 Advanced Micro Devices, Inc.
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files(the "Software"), to deal
 // in the Software without restriction, including without limitation the rights
@@ -30,6 +30,8 @@
 #include "FrameInterpolationSwapchainUiCompositionPremulVS.h"
 #include "FrameInterpolationSwapchainUiCompositionPremulPS.h"
 
+#include <array>
+
 constexpr uint32_t c_uiCompositionRingBufferSize = 4;
 constexpr uint32_t c_uiCompositionViewCount      = 3;  // 2 uniforms + 1 render target
 constexpr uint32_t c_uiCompositionTotalViewCount = c_uiCompositionViewCount * c_uiCompositionRingBufferSize;
@@ -47,13 +49,13 @@ VkDescriptorSet       s_uiCompositionDescriptorSets[c_uiCompositionRingBufferSiz
 VkImageView           s_uiCompositionImageViews[c_uiCompositionTotalViewCount];
 VkFramebuffer         s_uiCompositionFramebuffers[c_uiCompositionRingBufferSize];
 
-
-#define FFX_BACKEND_API_ERROR_ON_VK_ERROR(res) if (res != VK_SUCCESS) return FFX_ERROR_BACKEND_API_ERROR;
-
+#define FFX_BACKEND_API_ERROR_ON_VK_ERROR(res) \
+    if (res != VK_SUCCESS)                     \
+        return FFX_ERROR_BACKEND_API_ERROR;
 
 void releaseUiBlitGpuResources(const VkAllocationCallbacks* pAllocator)
 {
-    for (uint32_t i = 0; i < _countof(s_uiCompositionDescriptorSets); ++i)
+    for (uint32_t i = 0; i < std::size(s_uiCompositionDescriptorSets); ++i)
     {
         vkFreeDescriptorSets(s_uiCompositionDevice, s_uiCompositionDescriptorPool, 1, &s_uiCompositionDescriptorSets[i]);
         s_uiCompositionDescriptorSets[i] = VK_NULL_HANDLE;
@@ -76,12 +78,12 @@ void releaseUiBlitGpuResources(const VkAllocationCallbacks* pAllocator)
     vkDestroyRenderPass(s_uiCompositionDevice, s_uiCompositionRenderPass, pAllocator);
     s_uiCompositionRenderPass = nullptr;
 
-    for (uint32_t i = 0; i < _countof(s_uiCompositionImageViews); ++i)
+    for (uint32_t i = 0; i < std::size(s_uiCompositionImageViews); ++i)
     {
         vkDestroyImageView(s_uiCompositionDevice, s_uiCompositionImageViews[i], pAllocator);
         s_uiCompositionImageViews[i] = VK_NULL_HANDLE;
     }
-    for (uint32_t i = 0; i < _countof(s_uiCompositionFramebuffers); ++i)
+    for (uint32_t i = 0; i < std::size(s_uiCompositionFramebuffers); ++i)
     {
         vkDestroyFramebuffer(s_uiCompositionDevice, s_uiCompositionFramebuffers[i], pAllocator);
         s_uiCompositionFramebuffers[i] = VK_NULL_HANDLE;
@@ -197,18 +199,18 @@ VkResult CreateUiCompositionPipeline(VkDevice device, VkFormat fmt, const VkAllo
     if (res == VK_SUCCESS)
     {
         VkPipelineShaderStageCreateInfo shaderStageCreateInfos[2];
-        shaderStageCreateInfos[0].sType               = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-        shaderStageCreateInfos[0].pNext               = nullptr;
-        shaderStageCreateInfos[0].flags               = 0;
-        shaderStageCreateInfos[0].stage               = VK_SHADER_STAGE_VERTEX_BIT;
+        shaderStageCreateInfos[0].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+        shaderStageCreateInfos[0].pNext = nullptr;
+        shaderStageCreateInfos[0].flags = 0;
+        shaderStageCreateInfos[0].stage = VK_SHADER_STAGE_VERTEX_BIT;
         // shaderStageCreateInfos[0].module will be set later
         shaderStageCreateInfos[0].pName               = "main";
         shaderStageCreateInfos[0].pSpecializationInfo = nullptr;
 
-        shaderStageCreateInfos[1].sType               = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-        shaderStageCreateInfos[1].pNext               = nullptr;
-        shaderStageCreateInfos[1].flags               = 0;
-        shaderStageCreateInfos[1].stage               = VK_SHADER_STAGE_FRAGMENT_BIT;
+        shaderStageCreateInfos[1].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+        shaderStageCreateInfos[1].pNext = nullptr;
+        shaderStageCreateInfos[1].flags = 0;
+        shaderStageCreateInfos[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT;
         // shaderStageCreateInfos[1].module will be set later
         shaderStageCreateInfos[1].pName               = "main";
         shaderStageCreateInfos[1].pSpecializationInfo = nullptr;
@@ -293,7 +295,7 @@ VkResult CreateUiCompositionPipeline(VkDevice device, VkFormat fmt, const VkAllo
         dynamicStateCreateInfo.sType                            = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
         dynamicStateCreateInfo.pNext                            = nullptr;
         dynamicStateCreateInfo.flags                            = 0;
-        dynamicStateCreateInfo.dynamicStateCount                = _countof(dynamicStates);
+        dynamicStateCreateInfo.dynamicStateCount                = std::size(dynamicStates);
         dynamicStateCreateInfo.pDynamicStates                   = dynamicStates;
 
         // dynamic so put dummy values
@@ -333,7 +335,7 @@ VkResult CreateUiCompositionPipeline(VkDevice device, VkFormat fmt, const VkAllo
         info.sType                        = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
         info.pNext                        = nullptr;
         info.flags                        = 0;
-        info.stageCount                   = _countof(shaderStageCreateInfos);
+        info.stageCount                   = std::size(shaderStageCreateInfos);
         info.pStages                      = shaderStageCreateInfos;
         info.pVertexInputState            = &vertexInputStateCreateInfo;
         info.pInputAssemblyState          = &inputAssemblyStateCreateInfo;
@@ -409,7 +411,7 @@ FfxErrorCodes verifyUiBlitGpuResources(VkDevice device, VkFormat fmt, const VkAl
     {
         VkDescriptorPoolSize poolSize;
         poolSize.type            = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-        poolSize.descriptorCount = 8; // 4 frames * 2 textures should be enough
+        poolSize.descriptorCount = 8;  // 4 frames * 2 textures should be enough
 
         VkDescriptorPoolCreateInfo info = {};
         info.sType                      = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
@@ -451,12 +453,12 @@ FfxErrorCodes verifyUiBlitGpuResources(VkDevice device, VkFormat fmt, const VkAl
     // create sets
     {
         VkDescriptorSetAllocateInfo info;
-        info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+        info.sType              = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
         info.pNext              = nullptr;
         info.descriptorPool     = s_uiCompositionDescriptorPool;
         info.descriptorSetCount = 1;
-        info.pSetLayouts = &s_uiCompositionDescriptorSetLayout;
-        for (uint32_t i = 0; i < _countof(s_uiCompositionDescriptorSets); ++i)
+        info.pSetLayouts        = &s_uiCompositionDescriptorSetLayout;
+        for (uint32_t i = 0; i < std::size(s_uiCompositionDescriptorSets); ++i)
         {
             if (res == VK_SUCCESS && s_uiCompositionDescriptorSets[i] == VK_NULL_HANDLE)
             {
@@ -485,7 +487,7 @@ FfxErrorCodes verifyUiBlitGpuResources(VkDevice device, VkFormat fmt, const VkAl
 
 FFX_API FfxErrorCode ffxFrameInterpolationUiComposition(const FfxPresentCallbackDescription* params, void* unusedUserCtx)
 {
-    const VkAllocationCallbacks* pAllocator  = nullptr;
+    const VkAllocationCallbacks* pAllocator = nullptr;
 
     VkDevice device            = reinterpret_cast<VkDevice>(params->device);
     VkImage  renderTargetImage = reinterpret_cast<VkImage>(params->outputSwapChainBuffer.resource);
@@ -501,7 +503,7 @@ FFX_API FfxErrorCode ffxFrameInterpolationUiComposition(const FfxPresentCallback
     VkCommandBuffer commandBuffer   = reinterpret_cast<VkCommandBuffer>(params->commandList);
     VkImage         backbufferImage = reinterpret_cast<VkImage>(params->currentBackBuffer.resource);
     VkImage         uiImage         = reinterpret_cast<VkImage>(params->currentUI.resource);
-    
+
     FFX_ASSERT(commandBuffer != VK_NULL_HANDLE);
     FFX_ASSERT(s_uiCompositionPipeline != VK_NULL_HANDLE);
     FFX_ASSERT(s_uiCompositionPremulPipeline != VK_NULL_HANDLE);
@@ -563,12 +565,24 @@ FFX_API FfxErrorCode ffxFrameInterpolationUiComposition(const FfxPresentCallback
         uint32_t             barrierCount = 0;
         VkPipelineStageFlags srcStageMask = 0;
         VkPipelineStageFlags dstStageMask = VK_PIPELINE_STAGE_TRANSFER_BIT;
-        setBarrier(barriers, barrierCount, backbufferImage,   params->currentBackBuffer.state,     VK_ACCESS_TRANSFER_READ_BIT,  VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, srcStageMask);
-        setBarrier(barriers, barrierCount, renderTargetImage, params->outputSwapChainBuffer.state, VK_ACCESS_TRANSFER_WRITE_BIT, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, srcStageMask);
+        setBarrier(barriers,
+                   barrierCount,
+                   backbufferImage,
+                   params->currentBackBuffer.state,
+                   VK_ACCESS_TRANSFER_READ_BIT,
+                   VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                   srcStageMask);
+        setBarrier(barriers,
+                   barrierCount,
+                   renderTargetImage,
+                   params->outputSwapChainBuffer.state,
+                   VK_ACCESS_TRANSFER_WRITE_BIT,
+                   VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                   srcStageMask);
 
         if (barrierCount > 0)
             vkCmdPipelineBarrier(commandBuffer, srcStageMask, dstStageMask, 0, 0, nullptr, 0, nullptr, barrierCount, barriers);
-        
+
         VkImageCopy imageCopy;
         imageCopy.srcSubresource.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
         imageCopy.srcSubresource.mipLevel       = 0;
@@ -587,7 +601,8 @@ FFX_API FfxErrorCode ffxFrameInterpolationUiComposition(const FfxPresentCallback
         imageCopy.extent.width                  = backBufferWidth;
         imageCopy.extent.height                 = backBufferHeight;
         imageCopy.extent.depth                  = params->currentBackBuffer.description.depth;
-        vkCmdCopyImage(commandBuffer, backbufferImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, renderTargetImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &imageCopy);
+        vkCmdCopyImage(
+            commandBuffer, backbufferImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, renderTargetImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &imageCopy);
 
         if (barrierCount > 0)
         {
@@ -616,7 +631,7 @@ FFX_API FfxErrorCode ffxFrameInterpolationUiComposition(const FfxPresentCallback
             viewCreateInfo.components.g                    = VK_COMPONENT_SWIZZLE_IDENTITY;
             viewCreateInfo.components.b                    = VK_COMPONENT_SWIZZLE_IDENTITY;
             viewCreateInfo.components.a                    = VK_COMPONENT_SWIZZLE_IDENTITY;
-            viewCreateInfo.subresourceRange.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT; // TODO: is it always the case?
+            viewCreateInfo.subresourceRange.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;  // TODO: is it always the case?
             viewCreateInfo.subresourceRange.baseMipLevel   = 0;
             viewCreateInfo.subresourceRange.levelCount     = 1;
             viewCreateInfo.subresourceRange.baseArrayLayer = 0;
@@ -678,13 +693,25 @@ FFX_API FfxErrorCode ffxFrameInterpolationUiComposition(const FfxPresentCallback
         uint32_t             barrierCount = 0;
         VkPipelineStageFlags srcStageMask = 0;
         VkPipelineStageFlags dstStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-        setBarrier(barriers, barrierCount, backbufferImage,   params->currentBackBuffer.state,     VK_ACCESS_SHADER_READ_BIT,            VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, srcStageMask);
-        setBarrier(barriers, barrierCount, uiImage,           params->currentUI.state,             VK_ACCESS_SHADER_READ_BIT,            VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, srcStageMask);
-        setBarrier(barriers, barrierCount, renderTargetImage, params->outputSwapChainBuffer.state, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, srcStageMask);
+        setBarrier(barriers,
+                   barrierCount,
+                   backbufferImage,
+                   params->currentBackBuffer.state,
+                   VK_ACCESS_SHADER_READ_BIT,
+                   VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                   srcStageMask);
+        setBarrier(barriers, barrierCount, uiImage, params->currentUI.state, VK_ACCESS_SHADER_READ_BIT, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, srcStageMask);
+        setBarrier(barriers,
+                   barrierCount,
+                   renderTargetImage,
+                   params->outputSwapChainBuffer.state,
+                   VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+                   VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                   srcStageMask);
 
         if (barrierCount > 0)
             vkCmdPipelineBarrier(commandBuffer, srcStageMask, dstStageMask, 0, 0, nullptr, 0, nullptr, barrierCount, barriers);
-        
+
         VkRenderPassBeginInfo beginInfo    = {};
         beginInfo.sType                    = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
         beginInfo.pNext                    = nullptr;

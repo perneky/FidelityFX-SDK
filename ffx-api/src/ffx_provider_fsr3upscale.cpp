@@ -1,7 +1,7 @@
 // This file is part of the FidelityFX SDK.
 //
 // Copyright (C) 2024 Advanced Micro Devices, Inc.
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files(the "Software"), to deal
 // in the Software without restriction, including without limitation the rights
@@ -26,10 +26,10 @@
 #include <ffx_api/ffx_upscale.hpp>
 #ifdef FFX_BACKEND_DX12
 #include <ffx_api/dx12/ffx_api_dx12.h>
-#endif // FFX_BACKEND_DX12
+#endif  // FFX_BACKEND_DX12
 #ifdef FFX_BACKEND_VK
 #include <ffx_api/vk/ffx_api_vk.h>
-#endif // #ifdef FFX_BACKEND_VK
+#endif  // #ifdef FFX_BACKEND_VK
 #include <FidelityFX/host/ffx_fsr3upscaler.h>
 #include <FidelityFX/gpu/fsr3/ffx_fsr3_resources.h>
 
@@ -62,14 +62,15 @@ bool ffxProvider_FSR3Upscale::CanProvide(uint64_t type) const
     return (type & FFX_API_EFFECT_MASK) == FFX_API_EFFECT_ID_UPSCALE;
 }
 
-#define STRINGIFY_(X) #X
-#define STRINGIFY(X) STRINGIFY_(X) 
+#define STRINGIFY_(X)                            #X
+#define STRINGIFY(X)                             STRINGIFY_(X)
 #define MAKE_VERSION_STRING(major, minor, patch) STRINGIFY major "." STRINGIFY minor "." STRINGIFY patch
 
 uint64_t ffxProvider_FSR3Upscale::GetId() const
 {
     // FSR Scale, version from header
-    return 0xF5A5'CA1Eui64 << 32 | (FFX_SDK_MAKE_VERSION(FFX_FSR3UPSCALER_VERSION_MAJOR, FFX_FSR3UPSCALER_VERSION_MINOR, FFX_FSR3UPSCALER_VERSION_PATCH) & 0xFFFF'FFFF);
+    return 0xF5A5'CA1EULL << 32 |
+           (FFX_SDK_MAKE_VERSION(FFX_FSR3UPSCALER_VERSION_MAJOR, FFX_FSR3UPSCALER_VERSION_MINOR, FFX_FSR3UPSCALER_VERSION_PATCH) & 0xFFFF'FFFF);
 }
 
 const char* ffxProvider_FSR3Upscale::GetVersionName() const
@@ -79,12 +80,12 @@ const char* ffxProvider_FSR3Upscale::GetVersionName() const
 
 struct InternalFsr3UpscalerUContext
 {
-    InternalContextHeader   header;
-    FfxInterface            backendInterface;
-    FfxResourceInternal     sharedResources[FFX_FSR3_RESOURCE_IDENTIFIER_COUNT];
-    FfxFsr3UpscalerContext  context;
-    ffxApiMessage           fpMessage;
-    uint32_t                debugLevel;
+    InternalContextHeader  header;
+    FfxInterface           backendInterface;
+    FfxResourceInternal    sharedResources[FFX_FSR3_RESOURCE_IDENTIFIER_COUNT];
+    FfxFsr3UpscalerContext context;
+    ffxApiMessage          fpMessage;
+    uint32_t               debugLevel;
 };
 
 ffxReturnCode_t ffxProvider_FSR3Upscale::CreateContext(ffxContext* context, ffxCreateContextDescHeader* header, Allocator& alloc) const
@@ -99,8 +100,8 @@ ffxReturnCode_t ffxProvider_FSR3Upscale::CreateContext(ffxContext* context, ffxC
 #ifdef FFX_BACKEND_DX12
             Validator{desc->fpMessage, header}.AcceptExtensions({FFX_API_CREATE_CONTEXT_DESC_TYPE_BACKEND_DX12, FFX_API_DESC_TYPE_OVERRIDE_VERSION});
 #elif FFX_BACKEND_VK
-            Validator{ desc->fpMessage, header }.AcceptExtensions({ FFX_API_CREATE_CONTEXT_DESC_TYPE_BACKEND_VK, FFX_API_DESC_TYPE_OVERRIDE_VERSION });
-#endif // FFX_BACKEND_DX12
+            Validator{desc->fpMessage, header}.AcceptExtensions({FFX_API_CREATE_CONTEXT_DESC_TYPE_BACKEND_VK, FFX_API_DESC_TYPE_OVERRIDE_VERSION});
+#endif  // FFX_BACKEND_DX12
         }
         InternalFsr3UpscalerUContext* internal_context = alloc.construct<InternalFsr3UpscalerUContext>();
         VERIFY(internal_context, FFX_API_RETURN_ERROR_MEMORY);
@@ -109,21 +110,21 @@ ffxReturnCode_t ffxProvider_FSR3Upscale::CreateContext(ffxContext* context, ffxC
         TRY(MustCreateBackend(header, &internal_context->backendInterface, 1, alloc));
 
         FfxFsr3UpscalerContextDescription initializationParameters = {0};
-        initializationParameters.backendInterface = internal_context->backendInterface;
-        initializationParameters.maxRenderSize.width       = desc->maxRenderSize.width;
-        initializationParameters.maxRenderSize.height      = desc->maxRenderSize.height;
-        initializationParameters.maxUpscaleSize.width      = desc->maxUpscaleSize.width;
-        initializationParameters.maxUpscaleSize.height     = desc->maxUpscaleSize.height;
-        initializationParameters.flags                     = ConvertFlags(desc->flags);
+        initializationParameters.backendInterface                  = internal_context->backendInterface;
+        initializationParameters.maxRenderSize.width               = desc->maxRenderSize.width;
+        initializationParameters.maxRenderSize.height              = desc->maxRenderSize.height;
+        initializationParameters.maxUpscaleSize.width              = desc->maxUpscaleSize.width;
+        initializationParameters.maxUpscaleSize.height             = desc->maxUpscaleSize.height;
+        initializationParameters.flags                             = ConvertFlags(desc->flags);
         // Calling this casted function is undefined behaviour, but it's probably safe.
-        initializationParameters.fpMessage                 = reinterpret_cast<FfxFsr3UpscalerMessage>(desc->fpMessage);
+        initializationParameters.fpMessage = reinterpret_cast<FfxFsr3UpscalerMessage>(desc->fpMessage);
 
         // Grab this fp for use in extensions later
         internal_context->fpMessage = desc->fpMessage;
 
         // Create the FSR3UPSCALER context
         TRY2(ffxFsr3UpscalerContextCreate(&internal_context->context, &initializationParameters));
-        
+
         ffxFsr3UpscalerSetGlobalDebugMessage(reinterpret_cast<ffxMessageCallback>(desc->fpMessage), 0);
 
         // set up FSR3Upscaler "shared" resources (no resource sharing in the upscaler provider though, since providers are fully independent and we can't guarantee all upscale providers will be compatible with other effects)
@@ -133,15 +134,12 @@ ffxReturnCode_t ffxProvider_FSR3Upscale::CreateContext(ffxContext* context, ffxC
 
             {
                 FfxCreateResourceDescription dilD = fs3UpscalerResourceDescs.dilatedDepth;
-                dilD.name = fs3UpscalerResourceDescs.dilatedDepth.name;
+                dilD.name                         = fs3UpscalerResourceDescs.dilatedDepth.name;
                 TRY2(internal_context->backendInterface.fpCreateResource(
-                    &internal_context->backendInterface,
-                    &dilD,
-                    0,
-                    &internal_context->sharedResources[FFX_FSR3_RESOURCE_IDENTIFIER_DILATED_DEPTH_0]));
+                    &internal_context->backendInterface, &dilD, 0, &internal_context->sharedResources[FFX_FSR3_RESOURCE_IDENTIFIER_DILATED_DEPTH_0]));
 
                 FfxCreateResourceDescription dilMVs = fs3UpscalerResourceDescs.dilatedMotionVectors;
-                dilD.name   = fs3UpscalerResourceDescs.dilatedMotionVectors.name;
+                dilD.name                           = fs3UpscalerResourceDescs.dilatedMotionVectors.name;
                 TRY2(internal_context->backendInterface.fpCreateResource(
                     &internal_context->backendInterface,
                     &dilMVs,
@@ -149,7 +147,7 @@ ffxReturnCode_t ffxProvider_FSR3Upscale::CreateContext(ffxContext* context, ffxC
                     &internal_context->sharedResources[FFX_FSR3_RESOURCE_IDENTIFIER_DILATED_MOTION_VECTORS_0]));
 
                 FfxCreateResourceDescription recND = fs3UpscalerResourceDescs.reconstructedPrevNearestDepth;
-                recND.name = fs3UpscalerResourceDescs.reconstructedPrevNearestDepth.name;
+                recND.name                         = fs3UpscalerResourceDescs.reconstructedPrevNearestDepth.name;
                 TRY2(internal_context->backendInterface.fpCreateResource(
                     &internal_context->backendInterface,
                     &recND,
@@ -173,18 +171,17 @@ ffxReturnCode_t ffxProvider_FSR3Upscale::DestroyContext(ffxContext* context, All
     VERIFY(*context, FFX_API_RETURN_ERROR_PARAMETER);
 
     InternalFsr3UpscalerUContext* internal_context = reinterpret_cast<InternalFsr3UpscalerUContext*>(*context);
-    
+
     for (FfxUInt32 i = 0; i < FFX_FSR3_RESOURCE_IDENTIFIER_COUNT; i++)
     {
-        TRY2(internal_context->backendInterface.fpDestroyResource(
-            &internal_context->backendInterface, internal_context->sharedResources[i], 0));
+        TRY2(internal_context->backendInterface.fpDestroyResource(&internal_context->backendInterface, internal_context->sharedResources[i], 0));
     }
 
     TRY2(ffxFsr3UpscalerContextDestroy(&internal_context->context));
 
     alloc.dealloc(internal_context->backendInterface.scratchBuffer);
     alloc.dealloc(internal_context);
-    
+
     return FFX_API_RETURN_OK;
 }
 
@@ -205,9 +202,8 @@ ffxReturnCode_t ffxProvider_FSR3Upscale::Configure(ffxContext* context, const ff
     case FFX_API_CONFIGURE_DESC_TYPE_GLOBALDEBUG1:
     {
         auto desc = reinterpret_cast<const ffxConfigureDescGlobalDebug1*>(header);
-        TRY2(ffxFsr3UpscalerSetGlobalDebugMessage( reinterpret_cast<ffxMessageCallback>(desc->fpMessage),
-        desc->debugLevel));
-        internal_context->fpMessage = desc->fpMessage;
+        TRY2(ffxFsr3UpscalerSetGlobalDebugMessage(reinterpret_cast<ffxMessageCallback>(desc->fpMessage), desc->debugLevel));
+        internal_context->fpMessage  = desc->fpMessage;
         internal_context->debugLevel = desc->debugLevel;
         break;
     }
@@ -234,7 +230,7 @@ ffxReturnCode_t ffxProvider_FSR3Upscale::Query(ffxContext* context, ffxQueryDesc
     {
     case FFX_API_QUERY_DESC_TYPE_UPSCALE_GETJITTEROFFSET:
     {
-        auto desc = reinterpret_cast<ffxQueryDescUpscaleGetJitterOffset*>(header);
+        auto  desc = reinterpret_cast<ffxQueryDescUpscaleGetJitterOffset*>(header);
         float jitterX, jitterY;
         TRY2(ffxFsr3UpscalerGetJitterOffset(&jitterX, &jitterY, desc->index, desc->phaseCount));
         if (desc->pOutX != nullptr)
@@ -249,7 +245,7 @@ ffxReturnCode_t ffxProvider_FSR3Upscale::Query(ffxContext* context, ffxQueryDesc
     }
     case FFX_API_QUERY_DESC_TYPE_UPSCALE_GETJITTERPHASECOUNT:
     {
-        auto desc = reinterpret_cast<ffxQueryDescUpscaleGetJitterPhaseCount*>(header);
+        auto          desc             = reinterpret_cast<ffxQueryDescUpscaleGetJitterPhaseCount*>(header);
         const int32_t jitterPhaseCount = ffxFsr3UpscalerGetJitterPhaseCount(desc->renderWidth, desc->displayWidth);
 
         if (desc->pOutPhaseCount != nullptr)
@@ -260,11 +256,12 @@ ffxReturnCode_t ffxProvider_FSR3Upscale::Query(ffxContext* context, ffxQueryDesc
     }
     case FFX_API_QUERY_DESC_TYPE_UPSCALE_GETRENDERRESOLUTIONFROMQUALITYMODE:
     {
-        auto desc = reinterpret_cast<ffxQueryDescUpscaleGetRenderResolutionFromQualityMode*>(header);
+        auto     desc = reinterpret_cast<ffxQueryDescUpscaleGetRenderResolutionFromQualityMode*>(header);
         uint32_t renderWidth;
         uint32_t renderHeight;
 
-        TRY2(ffxFsr3UpscalerGetRenderResolutionFromQualityMode(&renderWidth, &renderHeight, desc->displayWidth, desc->displayHeight, ConvertEnum<FfxFsr3UpscalerQualityMode>(desc->qualityMode)));
+        TRY2(ffxFsr3UpscalerGetRenderResolutionFromQualityMode(
+            &renderWidth, &renderHeight, desc->displayWidth, desc->displayHeight, ConvertEnum<FfxFsr3UpscalerQualityMode>(desc->qualityMode)));
         if (desc->pOutRenderWidth != nullptr)
         {
             *desc->pOutRenderWidth = renderWidth;
@@ -277,7 +274,7 @@ ffxReturnCode_t ffxProvider_FSR3Upscale::Query(ffxContext* context, ffxQueryDesc
     }
     case FFX_API_QUERY_DESC_TYPE_UPSCALE_GETUPSCALERATIOFROMQUALITYMODE:
     {
-        auto desc = reinterpret_cast<ffxQueryDescUpscaleGetUpscaleRatioFromQualityMode*>(header);
+        auto  desc  = reinterpret_cast<ffxQueryDescUpscaleGetUpscaleRatioFromQualityMode*>(header);
         float ratio = ffxFsr3UpscalerGetUpscaleRatioFromQualityMode(ConvertEnum<FfxFsr3UpscalerQualityMode>(desc->qualityMode));
 
         if (desc->pOutUpscaleRatio != nullptr)
@@ -289,9 +286,9 @@ ffxReturnCode_t ffxProvider_FSR3Upscale::Query(ffxContext* context, ffxQueryDesc
     case FFX_API_QUERY_DESC_TYPE_UPSCALE_GPU_MEMORY_USAGE:
     {
         InternalFsr3UpscalerUContext* internal_context = reinterpret_cast<InternalFsr3UpscalerUContext*>(*context);
-        auto desc = reinterpret_cast<ffxQueryDescUpscaleGetGPUMemoryUsage*>(header);
-        
-        TRY2(ffxFsr3UpscalerContextGetGpuMemoryUsage(&internal_context->context, reinterpret_cast <FfxEffectMemoryUsage*> (desc->gpuMemoryUsageUpscaler)));
+        auto                          desc             = reinterpret_cast<ffxQueryDescUpscaleGetGPUMemoryUsage*>(header);
+
+        TRY2(ffxFsr3UpscalerContextGetGpuMemoryUsage(&internal_context->context, reinterpret_cast<FfxEffectMemoryUsage*>(desc->gpuMemoryUsageUpscaler)));
         break;
     }
     default:
@@ -320,36 +317,39 @@ ffxReturnCode_t ffxProvider_FSR3Upscale::Dispatch(ffxContext* context, const ffx
         auto desc = reinterpret_cast<const ffxDispatchDescUpscale*>(header);
 
         FfxFsr3UpscalerDispatchDescription dispatchParameters = {};
-        dispatchParameters.commandList                = desc->commandList;
-        dispatchParameters.color                      = Convert(desc->color);
-        dispatchParameters.depth                      = Convert(desc->depth);
-        dispatchParameters.motionVectors              = Convert(desc->motionVectors);
-        dispatchParameters.exposure                   = Convert(desc->exposure);
-        dispatchParameters.output                     = Convert(desc->output);
-        dispatchParameters.reactive                   = Convert(desc->reactive);
-        dispatchParameters.transparencyAndComposition = Convert(desc->transparencyAndComposition);
-        dispatchParameters.jitterOffset.x             = desc->jitterOffset.x;
-        dispatchParameters.jitterOffset.y             = desc->jitterOffset.y;
-        dispatchParameters.motionVectorScale.x        = desc->motionVectorScale.x;
-        dispatchParameters.motionVectorScale.y        = desc->motionVectorScale.y;
-        dispatchParameters.reset                      = desc->reset;
-        dispatchParameters.enableSharpening           = desc->enableSharpening;
-        dispatchParameters.sharpness                  = desc->sharpness;
-        dispatchParameters.frameTimeDelta             = desc->frameTimeDelta;
-        dispatchParameters.preExposure                = desc->preExposure;
-        dispatchParameters.renderSize.width           = desc->renderSize.width;
-        dispatchParameters.renderSize.height          = desc->renderSize.height;
-        dispatchParameters.upscaleSize.width          = desc->upscaleSize.width;
-        dispatchParameters.upscaleSize.height         = desc->upscaleSize.height;
-        dispatchParameters.cameraFovAngleVertical     = desc->cameraFovAngleVertical;
-        dispatchParameters.cameraFar                  = desc->cameraFar;
-        dispatchParameters.cameraNear                 = desc->cameraNear;
-        dispatchParameters.viewSpaceToMetersFactor    = desc->viewSpaceToMetersFactor;
-        dispatchParameters.flags = 0;
+        dispatchParameters.commandList                        = desc->commandList;
+        dispatchParameters.color                              = Convert(desc->color);
+        dispatchParameters.depth                              = Convert(desc->depth);
+        dispatchParameters.motionVectors                      = Convert(desc->motionVectors);
+        dispatchParameters.exposure                           = Convert(desc->exposure);
+        dispatchParameters.output                             = Convert(desc->output);
+        dispatchParameters.reactive                           = Convert(desc->reactive);
+        dispatchParameters.transparencyAndComposition         = Convert(desc->transparencyAndComposition);
+        dispatchParameters.jitterOffset.x                     = desc->jitterOffset.x;
+        dispatchParameters.jitterOffset.y                     = desc->jitterOffset.y;
+        dispatchParameters.motionVectorScale.x                = desc->motionVectorScale.x;
+        dispatchParameters.motionVectorScale.y                = desc->motionVectorScale.y;
+        dispatchParameters.reset                              = desc->reset;
+        dispatchParameters.enableSharpening                   = desc->enableSharpening;
+        dispatchParameters.sharpness                          = desc->sharpness;
+        dispatchParameters.frameTimeDelta                     = desc->frameTimeDelta;
+        dispatchParameters.preExposure                        = desc->preExposure;
+        dispatchParameters.renderSize.width                   = desc->renderSize.width;
+        dispatchParameters.renderSize.height                  = desc->renderSize.height;
+        dispatchParameters.upscaleSize.width                  = desc->upscaleSize.width;
+        dispatchParameters.upscaleSize.height                 = desc->upscaleSize.height;
+        dispatchParameters.cameraFovAngleVertical             = desc->cameraFovAngleVertical;
+        dispatchParameters.cameraFar                          = desc->cameraFar;
+        dispatchParameters.cameraNear                         = desc->cameraNear;
+        dispatchParameters.viewSpaceToMetersFactor            = desc->viewSpaceToMetersFactor;
+        dispatchParameters.flags                              = 0;
 
-        dispatchParameters.dilatedDepth                     = internal_context->backendInterface.fpGetResource( &internal_context->backendInterface, internal_context->sharedResources[FFX_FSR3_RESOURCE_IDENTIFIER_DILATED_DEPTH_0]);
-        dispatchParameters.dilatedMotionVectors             = internal_context->backendInterface.fpGetResource( &internal_context->backendInterface, internal_context->sharedResources[FFX_FSR3_RESOURCE_IDENTIFIER_DILATED_MOTION_VECTORS_0]);
-        dispatchParameters.reconstructedPrevNearestDepth    = internal_context->backendInterface.fpGetResource( &internal_context->backendInterface, internal_context->sharedResources[FFX_FSR3_RESOURCE_IDENTIFIER_RECONSTRUCTED_PREVIOUS_NEAREST_DEPTH_0]);
+        dispatchParameters.dilatedDepth = internal_context->backendInterface.fpGetResource(
+            &internal_context->backendInterface, internal_context->sharedResources[FFX_FSR3_RESOURCE_IDENTIFIER_DILATED_DEPTH_0]);
+        dispatchParameters.dilatedMotionVectors = internal_context->backendInterface.fpGetResource(
+            &internal_context->backendInterface, internal_context->sharedResources[FFX_FSR3_RESOURCE_IDENTIFIER_DILATED_MOTION_VECTORS_0]);
+        dispatchParameters.reconstructedPrevNearestDepth = internal_context->backendInterface.fpGetResource(
+            &internal_context->backendInterface, internal_context->sharedResources[FFX_FSR3_RESOURCE_IDENTIFIER_RECONSTRUCTED_PREVIOUS_NEAREST_DEPTH_0]);
 
         if (desc->flags & FFX_UPSCALE_FLAG_DRAW_DEBUG_VIEW)
         {
@@ -364,16 +364,16 @@ ffxReturnCode_t ffxProvider_FSR3Upscale::Dispatch(ffxContext* context, const ffx
         auto desc = reinterpret_cast<const ffxDispatchDescUpscaleGenerateReactiveMask*>(header);
 
         FfxFsr3UpscalerGenerateReactiveDescription dispatchParameters = {};
-        dispatchParameters.commandList       = desc->commandList;
-        dispatchParameters.colorOpaqueOnly   = Convert(desc->colorOpaqueOnly);
-        dispatchParameters.colorPreUpscale   = Convert(desc->colorPreUpscale);
-        dispatchParameters.outReactive       = Convert(desc->outReactive);
-        dispatchParameters.renderSize.width  = desc->renderSize.width;
-        dispatchParameters.renderSize.height = desc->renderSize.height;
-        dispatchParameters.scale             = desc->scale;
-        dispatchParameters.cutoffThreshold   = desc->cutoffThreshold;
-        dispatchParameters.binaryValue       = desc->binaryValue;
-        dispatchParameters.flags             = desc->flags;
+        dispatchParameters.commandList                                = desc->commandList;
+        dispatchParameters.colorOpaqueOnly                            = Convert(desc->colorOpaqueOnly);
+        dispatchParameters.colorPreUpscale                            = Convert(desc->colorPreUpscale);
+        dispatchParameters.outReactive                                = Convert(desc->outReactive);
+        dispatchParameters.renderSize.width                           = desc->renderSize.width;
+        dispatchParameters.renderSize.height                          = desc->renderSize.height;
+        dispatchParameters.scale                                      = desc->scale;
+        dispatchParameters.cutoffThreshold                            = desc->cutoffThreshold;
+        dispatchParameters.binaryValue                                = desc->binaryValue;
+        dispatchParameters.flags                                      = desc->flags;
 
         TRY2(ffxFsr3UpscalerContextGenerateReactiveMask(&internal_context->context, &dispatchParameters));
         break;

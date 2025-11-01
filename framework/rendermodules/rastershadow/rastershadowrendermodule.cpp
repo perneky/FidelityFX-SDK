@@ -1,7 +1,7 @@
 // This file is part of the FidelityFX SDK.
 //
 // Copyright (C) 2024 Advanced Micro Devices, Inc.
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files(the "Software"), to deal
 // in the Software without restriction, including without limitation the rights
@@ -55,10 +55,10 @@ void RasterShadowRenderModule::Init(const json& initData)
 
     // Root signature
     RootSignatureDesc signatureDesc;
-    signatureDesc.AddConstantBufferView(0, ShaderBindStage::VertexAndPixel, 1);   // Camera Information
-    signatureDesc.AddConstantBufferView(1, ShaderBindStage::VertexAndPixel, 1);   // Instance Information
-    signatureDesc.AddConstantBufferView(2, ShaderBindStage::Pixel, 1);            // Texture Indices
-    signatureDesc.AddTextureSRVSet(0, ShaderBindStage::Pixel, s_MaxTextureCount); // Texture resource array
+    signatureDesc.AddConstantBufferView(0, ShaderBindStage::VertexAndPixel, 1);    // Camera Information
+    signatureDesc.AddConstantBufferView(1, ShaderBindStage::VertexAndPixel, 1);    // Instance Information
+    signatureDesc.AddConstantBufferView(2, ShaderBindStage::Pixel, 1);             // Texture Indices
+    signatureDesc.AddTextureSRVSet(0, ShaderBindStage::Pixel, s_MaxTextureCount);  // Texture resource array
 
     // Create sampler set
     signatureDesc.AddSamplerSet(0, ShaderBindStage::Pixel, s_MaxSamplerCount);
@@ -126,10 +126,12 @@ void RasterShadowRenderModule::Execute(double deltaTime, CommandList* pCmdList)
     // Transition all the shadow maps for write
     // Render modules expect resources coming in/going out to be in a shader read state
     ShadowMapResourcePool* pShadowPool = GetFramework()->GetShadowMapResourcePool();
-    std::vector<Barrier> barriers;
+    std::vector<Barrier>   barriers;
     for (uint32_t i = 0; i < pShadowPool->GetRenderTargetCount(); ++i)
     {
-        barriers.push_back(Barrier::Transition(pShadowPool->GetRenderTarget(i)->GetResource(), ResourceState::NonPixelShaderResource | ResourceState::PixelShaderResource, ResourceState::DepthWrite));
+        barriers.push_back(Barrier::Transition(pShadowPool->GetRenderTarget(i)->GetResource(),
+                                               ResourceState::NonPixelShaderResource | ResourceState::PixelShaderResource,
+                                               ResourceState::DepthWrite));
     }
     ResourceBarrier(pCmdList, static_cast<uint32_t>(barriers.size()), barriers.data());
 
@@ -140,7 +142,8 @@ void RasterShadowRenderModule::Execute(double deltaTime, CommandList* pCmdList)
 
     for (auto shadowMapInfo : m_ShadowMapInfos)
     {
-        CauldronAssert(ASSERT_ERROR, shadowMapInfo.ShadowMapIndex >= 0, L"RasterShadowRenderModule register a shadow casting light that doesn't have a render target");
+        CauldronAssert(
+            ASSERT_ERROR, shadowMapInfo.ShadowMapIndex >= 0, L"RasterShadowRenderModule register a shadow casting light that doesn't have a render target");
 
         // no light component, exit
         if (shadowMapInfo.LightComponents.size() == 0)
@@ -155,7 +158,7 @@ void RasterShadowRenderModule::Execute(double deltaTime, CommandList* pCmdList)
         // Bind raster resources
         BeginRaster(pCmdList, 0, nullptr, shadowMapInfo.pRasterView);
 
-        Rect scissorRect = { 0, 0, pShadowMapTarget->GetDesc().Width, pShadowMapTarget->GetDesc().Height };
+        Rect scissorRect = {0, 0, pShadowMapTarget->GetDesc().Width, pShadowMapTarget->GetDesc().Height};
         SetScissorRects(pCmdList, 1, &scissorRect);
         SetPrimitiveTopology(pCmdList, PrimitiveTopology::TriangleList);
 
@@ -167,11 +170,11 @@ void RasterShadowRenderModule::Execute(double deltaTime, CommandList* pCmdList)
                     continue;
 
                 SceneInformation sceneInfo;
-                const wchar_t* shadowMapName = nullptr;
+                const wchar_t*   shadowMapName = nullptr;
                 switch (pLightComponent->GetType())
                 {
                 case LightType::Directional:
-                    shadowMapName = L"Directional shadow map";
+                    shadowMapName       = L"Directional shadow map";
                     hasDirectionalLight = true;
                     break;
                 case LightType::Spot:
@@ -222,18 +225,17 @@ void RasterShadowRenderModule::Execute(double deltaTime, CommandList* pCmdList)
                     GetDynamicBufferPool()->BatchAllocateConstantBuffer(sizeof(TextureIndices), activeCount, textureIndicesBufferInfos.data());
                     uint32_t currentSurface = 0;
 
-
                     for (auto& pipelineSurfaceInfo : pipelineGroup.m_RenderSurfaces)
                     {
                         // Make sure owner is active
                         if (pipelineSurfaceInfo.pOwner->IsActive())
                         {
-                            const Surface* pSurface = pipelineSurfaceInfo.pSurface;
+                            const Surface*  pSurface  = pipelineSurfaceInfo.pSurface;
                             const Material* pMaterial = pSurface->GetMaterial();
 
                             // NOTE - We should enforce no scaling on transforms as we don't support scaled matrix transforms in the shader
                             InstanceInformation instanceInfo;
-                            instanceInfo.WorldTransform = pipelineSurfaceInfo.pOwner->GetTransform();
+                            instanceInfo.WorldTransform           = pipelineSurfaceInfo.pOwner->GetTransform();
                             instanceInfo.MaterialInfo.AlphaCutoff = pMaterial->GetAlphaCutOff();
 
                             BufferAddressInfo& perObjectBufferInfo = perObjectBufferInfos[currentSurface];
@@ -244,7 +246,6 @@ void RasterShadowRenderModule::Execute(double deltaTime, CommandList* pCmdList)
                                 textureIndicesBufferInfo, sizeof(TextureIndices), &pipelineSurfaceInfo.TextureIndices);
 
                             currentSurface++;
-
 
                             m_pParameterSet->UpdateRootConstantBuffer(&perObjectBufferInfo, 1);
                             m_pParameterSet->UpdateRootConstantBuffer(&textureIndicesBufferInfo, 2);
@@ -258,7 +259,8 @@ void RasterShadowRenderModule::Execute(double deltaTime, CommandList* pCmdList)
                                 // Check if the attribute is present
                                 if (pipelineGroup.m_UsedAttributes & (0x1 << attribute))
                                 {
-                                    vertexBuffers.emplace_back(pSurface->GetVertexBuffer(static_cast<VertexAttributeType>(attribute)).pBuffer->GetAddressInfo());
+                                    vertexBuffers.emplace_back(
+                                        pSurface->GetVertexBuffer(static_cast<VertexAttributeType>(attribute)).pBuffer->GetAddressInfo());
                                 }
                             }
 
@@ -300,7 +302,9 @@ void RasterShadowRenderModule::Execute(double deltaTime, CommandList* pCmdList)
     barriers.clear();
     for (uint32_t i = 0; i < pShadowPool->GetRenderTargetCount(); ++i)
     {
-        barriers.push_back(Barrier::Transition(pShadowPool->GetRenderTarget(i)->GetResource(), ResourceState::DepthWrite, ResourceState::NonPixelShaderResource | ResourceState::PixelShaderResource));
+        barriers.push_back(Barrier::Transition(pShadowPool->GetRenderTarget(i)->GetResource(),
+                                               ResourceState::DepthWrite,
+                                               ResourceState::NonPixelShaderResource | ResourceState::PixelShaderResource));
     }
     ResourceBarrier(pCmdList, static_cast<uint32_t>(barriers.size()), barriers.data());
 
@@ -310,7 +314,7 @@ void RasterShadowRenderModule::Execute(double deltaTime, CommandList* pCmdList)
 
 void RasterShadowRenderModule::OnNewContentLoaded(ContentBlock* pContentBlock)
 {
-    MeshComponentMgr* pMeshComponentManager = MeshComponentMgr::Get();
+    MeshComponentMgr*  pMeshComponentManager  = MeshComponentMgr::Get();
     LightComponentMgr* pLightComponentManager = LightComponentMgr::Get();
 
     std::lock_guard<std::mutex> lock(m_CriticalSection);
@@ -322,16 +326,16 @@ void RasterShadowRenderModule::OnNewContentLoaded(ContentBlock* pContentBlock)
         {
             if (pComponent->GetManager() == pMeshComponentManager)
             {
-                const Mesh* pMesh = reinterpret_cast<MeshComponent*>(pComponent)->GetData().pMesh;
+                const Mesh*  pMesh       = reinterpret_cast<MeshComponent*>(pComponent)->GetData().pMesh;
                 const size_t numSurfaces = pMesh->GetNumSurfaces();
                 for (uint32_t i = 0; i < numSurfaces; ++i)
                 {
-                    const Surface* pSurface = pMesh->GetSurface(i);
+                    const Surface*  pSurface  = pMesh->GetSurface(i);
                     const Material* pMaterial = pSurface->GetMaterial();
 
                     // Push surface render information
                     PipelineSurfaceRenderInfo surfaceRenderInfo;
-                    surfaceRenderInfo.pOwner = pComponent->GetOwner();
+                    surfaceRenderInfo.pOwner   = pComponent->GetOwner();
                     surfaceRenderInfo.pSurface = pSurface;
 
                     int32_t samplerIndex;
@@ -389,7 +393,7 @@ void RasterShadowRenderModule::OnContentUnloaded(ContentBlock* pContentBlock)
         {
             if (pComponent->GetManager() == MeshComponentMgr::Get())
             {
-                const Mesh* pMesh = reinterpret_cast<MeshComponent*>(pComponent)->GetData().pMesh;
+                const Mesh*   pMesh  = reinterpret_cast<MeshComponent*>(pComponent)->GetData().pMesh;
                 const Entity* pOwner = pComponent->GetOwner();
 
                 const size_t numSurfaces = pMesh->GetNumSurfaces();
@@ -428,7 +432,7 @@ void RasterShadowRenderModule::OnContentUnloaded(ContentBlock* pContentBlock)
             }
             else if (pComponent->GetManager() == LightComponentMgr::Get())
             {
-                LightComponent* pLightComponent = reinterpret_cast<LightComponent*>(pComponent);
+                LightComponent*             pLightComponent = reinterpret_cast<LightComponent*>(pComponent);
                 std::lock_guard<std::mutex> pipelineLock(m_CriticalSection);
                 DestroyShadowMapInfo(pLightComponent);
             }
@@ -439,7 +443,7 @@ void RasterShadowRenderModule::OnContentUnloaded(ContentBlock* pContentBlock)
 //////////////////////////////////////////////////////////////////////////
 // Content loading helpers
 
-uint32_t RasterShadowRenderModule::GetPipelinePermutationID(const Surface* pSurface) // uint32_t vertexAttributeFlags, const Material* pMaterial)
+uint32_t RasterShadowRenderModule::GetPipelinePermutationID(const Surface* pSurface)  // uint32_t vertexAttributeFlags, const Material* pMaterial)
 {
     // RasterShadow shader should be optimized based on what the model provides
     //   - It only needs the Position and Color0 attributes
@@ -449,7 +453,7 @@ uint32_t RasterShadowRenderModule::GetPipelinePermutationID(const Surface* pSurf
 
     // only keep the available attributes of the surface
     const uint32_t surfaceAttributes = pSurface->GetVertexAttributes();
-    usedAttributes = usedAttributes & surfaceAttributes;
+    usedAttributes                   = usedAttributes & surfaceAttributes;
     DefineList defineList;
 
     const Material* pMaterial = pSurface->GetMaterial();
@@ -477,24 +481,24 @@ uint32_t RasterShadowRenderModule::GetPipelinePermutationID(const Surface* pSurf
             defineList.insert(std::make_pair(L"MATERIAL_METALLICROUGHNESS", L""));
             AddTextureToDefineList(defineList, usedAttributes, surfaceAttributes, pMaterial, TextureClass::Albedo, L"ID_albedoTexture", L"ID_albedoTexCoord");
             AddTextureToDefineList(defineList,
-                usedAttributes,
-                surfaceAttributes,
-                pMaterial,
-                TextureClass::MetalRough,
-                L"ID_metallicRoughnessTexture",
-                L"ID_metallicRoughnessTexCoord");
+                                   usedAttributes,
+                                   surfaceAttributes,
+                                   pMaterial,
+                                   TextureClass::MetalRough,
+                                   L"ID_metallicRoughnessTexture",
+                                   L"ID_metallicRoughnessTexCoord");
         }
         else if (pMaterial->HasPBRSpecGloss())
         {
             defineList.insert(std::make_pair(L"MATERIAL_SPECULARGLOSSINESS", L""));
             AddTextureToDefineList(defineList, usedAttributes, surfaceAttributes, pMaterial, TextureClass::Albedo, L"ID_albedoTexture", L"ID_albedoTexCoord");
             AddTextureToDefineList(defineList,
-                usedAttributes,
-                surfaceAttributes,
-                pMaterial,
-                TextureClass::SpecGloss,
-                L"ID_specularGlossinessTexture",
-                L"ID_specularGlossinessTexCoord");
+                                   usedAttributes,
+                                   surfaceAttributes,
+                                   pMaterial,
+                                   TextureClass::SpecGloss,
+                                   L"ID_specularGlossinessTexture",
+                                   L"ID_specularGlossinessTexCoord");
         }
     }
 
@@ -511,7 +515,7 @@ uint32_t RasterShadowRenderModule::GetPipelinePermutationID(const Surface* pSurf
             defineList.insert(std::make_pair(L"DEF_alphaCutoff", L"0.99"));
         }
     }
-    defineList.insert(std::make_pair(L"NO_WORLDPOS", L"")); // no need for the vert4ext shader to output world pos
+    defineList.insert(std::make_pair(L"NO_WORLDPOS", L""));  // no need for the vert4ext shader to output world pos
 
     // Get the defines for attributes that make up the surface vertices
     Surface::GetVertexAttributeDefines(usedAttributes, defineList);
@@ -541,7 +545,7 @@ uint32_t RasterShadowRenderModule::GetPipelinePermutationID(const Surface* pSurf
     psoDesc.AddRenderTargetFormats(0, nullptr, GetFramework()->GetShadowMapResourcePool()->GetShadowMapTextureFormat());
 
     RasterDesc rasterDesc;
-    rasterDesc.CullingMode = CullMode::None;    // To help avoid light leaks
+    rasterDesc.CullingMode = CullMode::None;  // To help avoid light leaks
     psoDesc.AddRasterStateDescription(&rasterDesc);
 
     std::vector<InputLayoutDesc> vertexAttributes;
@@ -549,22 +553,25 @@ uint32_t RasterShadowRenderModule::GetPipelinePermutationID(const Surface* pSurf
     {
         // Check if the attribute is present
         if (usedAttributes & 0x1 << attribute)
-            vertexAttributes.push_back(InputLayoutDesc(static_cast<VertexAttributeType>(attribute), pSurface->GetVertexBuffer(static_cast<VertexAttributeType>(attribute)).ResourceDataFormat, (uint32_t)vertexAttributes.size(), 0));
+            vertexAttributes.push_back(InputLayoutDesc(static_cast<VertexAttributeType>(attribute),
+                                                       pSurface->GetVertexBuffer(static_cast<VertexAttributeType>(attribute)).ResourceDataFormat,
+                                                       (uint32_t)vertexAttributes.size(),
+                                                       0));
     }
     psoDesc.AddInputLayout(vertexAttributes);
 
     DepthDesc depthDesc;
-    depthDesc.DepthEnable = true;
-    depthDesc.StencilEnable = false;
+    depthDesc.DepthEnable      = true;
+    depthDesc.StencilEnable    = false;
     depthDesc.DepthWriteEnable = true;
-    depthDesc.DepthFunc = ComparisonFunc::Less;
+    depthDesc.DepthFunc        = ComparisonFunc::Less;
     psoDesc.AddDepthState(&depthDesc);
 
-    PipelineObject*              pPipelineObj = PipelineObject::CreatePipelineObject(L"RasterShadowRenderModule_PipelineObj", psoDesc);
+    PipelineObject* pPipelineObj = PipelineObject::CreatePipelineObject(L"RasterShadowRenderModule_PipelineObj", psoDesc);
 
     PipelineRenderGroup pipelineGroup;
-    pipelineGroup.m_Pipeline = pPipelineObj;
-    pipelineGroup.m_PipelineHash = hash;
+    pipelineGroup.m_Pipeline       = pPipelineObj;
+    pipelineGroup.m_PipelineHash   = hash;
     pipelineGroup.m_UsedAttributes = usedAttributes;
     m_PipelineRenderGroups.push_back(pipelineGroup);
 
@@ -613,7 +620,7 @@ int32_t RasterShadowRenderModule::AddTexture(const Material* pMaterial, const Te
         }
 
         // Texture wasn't found
-        BoundTexture b = { pTextureInfo->pTexture, 1 };
+        BoundTexture b = {pTextureInfo->pTexture, 1};
         if (firstFreeIndex < 0)
         {
             m_Textures.push_back(b);
@@ -648,8 +655,8 @@ void RasterShadowRenderModule::CreateShadowMapInfo(LightComponent* pLightCompone
 
     for (int i = 0; i < pLightComponent->GetShadowMapCount(); ++i)
     {
-        ShadowMapResourcePool* pResourcePool = GetFramework()->GetShadowMapResourcePool();
-        ShadowMapResourcePool::ShadowMapView view = pResourcePool->GetNewShadowMap(resolution);
+        ShadowMapResourcePool*               pResourcePool = GetFramework()->GetShadowMapResourcePool();
+        ShadowMapResourcePool::ShadowMapView view          = pResourcePool->GetNewShadowMap(resolution);
         CauldronAssert(ASSERT_WARNING, view.index >= 0, L"Unable to get a shadow map texture from the pool.");
 
         // find if the shadow map info already exists
@@ -677,9 +684,9 @@ void RasterShadowRenderModule::CreateShadowMapInfo(LightComponent* pLightCompone
         if (std::find(iter->LightComponents.begin(), iter->LightComponents.end(), pLightComponent) == iter->LightComponents.end())
             iter->LightComponents.push_back(pLightComponent);
 
-        lightData.ShadowMapIndex[i] = view.index;
+        lightData.ShadowMapIndex[i]     = view.index;
         lightData.ShadowMapCellIndex[i] = view.cellIndex;
-        lightData.ShadowMapRect[i] = view.rect;
+        lightData.ShadowMapRect[i]      = view.rect;
     }
 }
 
@@ -753,50 +760,51 @@ void RasterShadowRenderModule::UpdateUIState(bool hasDirectional)
         // when it shouldn't be, so don't allow changing of slice count on VK for now.
         // This will be in the "Known Issues" section of the documentation
         enabled = false;
-#endif // #if defined(_VK)
-        m_UISection->RegisterUIElement<UISlider<int32_t>>(
-            "Cascades Number",
-            m_NumCascades,
-            1, 4,
-            enabled,
-            [this](int32_t cur, int32_t old) {
-                for (int i = 0; i < _countof(m_CascadeSplitPointsEnabled); ++i)
-                    m_CascadeSplitPointsEnabled[i] = (m_NumCascades > i + 1);
-                UpdateCascades();
-            });
+#endif  // #if defined(_VK)
+        m_UISection->RegisterUIElement<UISlider<int32_t>>("Cascades Number", m_NumCascades, 1, 4, enabled, [this](int32_t cur, int32_t old) {
+            for (int i = 0; i < std::size(m_CascadeSplitPointsEnabled); ++i)
+                m_CascadeSplitPointsEnabled[i] = (m_NumCascades > i + 1);
+            UpdateCascades();
+        });
 
         // Setup cascade split points
         m_UISection->RegisterUIElement<UISlider<float>>(
             "Cascade Split Points 0",
             m_CascadeSplitPoints[0],
-            0.0f, 100.0f,
+            0.0f,
+            100.0f,
             m_CascadeSplitPointsEnabled[0],
             [this](int32_t cur, int32_t old) { UpdateCascades(); },
-            true, false, "%.2f%%");
+            true,
+            false,
+            "%.2f%%");
         m_UISection->RegisterUIElement<UISlider<float>>(
             "Cascade Split Points 1",
             m_CascadeSplitPoints[1],
-            0.0f, 100.0f,
+            0.0f,
+            100.0f,
             m_CascadeSplitPointsEnabled[1],
             [this](int32_t cur, int32_t old) { UpdateCascades(); },
-            true, false, "%.2f%%");
+            true,
+            false,
+            "%.2f%%");
         m_UISection->RegisterUIElement<UISlider<float>>(
             "Cascade Split Points 2",
             m_CascadeSplitPoints[2],
-            0.0f, 100.0f,
+            0.0f,
+            100.0f,
             m_CascadeSplitPointsEnabled[2],
             [this](int32_t cur, int32_t old) { UpdateCascades(); },
-            true, false, "%.2f%%");
+            true,
+            false,
+            "%.2f%%");
 
         // bMoveLightTexelSize
-        m_UISection->RegisterUIElement<UICheckBox>(
-            "Camera Pixel Align",
-            m_MoveLightTexelSize,
-            [this](bool cur, bool old) {
-                for (int i = 0; i < _countof(m_CascadeSplitPointsEnabled); ++i)
-                    m_CascadeSplitPointsEnabled[i] = (m_NumCascades > i + 1);
-                UpdateCascades();
-            });
+        m_UISection->RegisterUIElement<UICheckBox>("Camera Pixel Align", m_MoveLightTexelSize, [this](bool cur, bool old) {
+            for (int i = 0; i < std::size(m_CascadeSplitPointsEnabled); ++i)
+                m_CascadeSplitPointsEnabled[i] = (m_NumCascades > i + 1);
+            UpdateCascades();
+        });
 
         m_DirUIShowing = true;
     }

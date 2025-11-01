@@ -169,7 +169,7 @@ if(FFX_VS_VERSION STREQUAL 2015 OR FFX_VS_VERSION STREQUAL 2017)
 endif()
 
 # Setup common variables
-set(FFX_SC_EXECUTABLE ${CMAKE_CURRENT_SOURCE_DIR}/tools/binary_store/FidelityFX_SC.exe)
+set(FFX_SC_EXECUTABLE wine "${CMAKE_CURRENT_SOURCE_DIR}/tools/binary_store/FidelityFX_SC.exe")
 set(FFX_INCLUDE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/include)
 set(FFX_LIB_PATH ${CMAKE_CURRENT_SOURCE_DIR}/libs)
 set(FFX_BIN_PATH ${CMAKE_CURRENT_SOURCE_DIR}/bin/ffx_sdk)

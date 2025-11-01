@@ -1,7 +1,7 @@
 // This file is part of the FidelityFX SDK.
 //
 // Copyright (C) 2025 Advanced Micro Devices, Inc.
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files(the "Software"), to deal
 // in the Software without restriction, including without limitation the rights
@@ -21,6 +21,7 @@
 // THE SOFTWARE.
 
 #include <FidelityFX/host/ffx_message.h>
+#include <FidelityFX/host/ffx_util.h>
 
 #ifdef _WIN32
 #ifndef WIN32_LEAN_AND_MEAN
@@ -30,30 +31,35 @@
 #endif                // #ifdef _WIN32
 
 static ffxMessageCallback s_messageCallback;
-static uint32_t s_debugLevel;
+static uint32_t           s_debugLevel;
 
 // set the printing callback function
 void ffxSetPrintMessageCallback(ffxMessageCallback callback, uint32_t debugLevel)
 {
     s_messageCallback = callback;
-    s_debugLevel = debugLevel;
+    s_debugLevel      = debugLevel;
     return;
 }
 
 void ffxPrintMessage(uint32_t type, const wchar_t* message)
 {
 #ifdef _WIN32
-    if (!s_messageCallback) {
+    if (!s_messageCallback)
+    {
         // Format the message string
         wchar_t buffer[512];
-        if (type == FFX_MESSAGE_TYPE_ERROR) {
+        if (type == FFX_MESSAGE_TYPE_ERROR)
+        {
             swprintf_s(buffer, 512, L"FSR_API_DEBUG_ERROR: %ls\n", message);
         }
-        else if (type == FFX_MESSAGE_TYPE_WARNING) {
+        else if (type == FFX_MESSAGE_TYPE_WARNING)
+        {
             swprintf_s(buffer, 512, L"FSR_API_DEBUG_WARNING: %ls\n", message);
         }
         OutputDebugStringW(buffer);
-    } else {
+    }
+    else
+    {
         s_messageCallback(type, message);
     }
 #else

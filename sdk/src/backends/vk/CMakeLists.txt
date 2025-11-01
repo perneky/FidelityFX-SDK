@@ -553,6 +553,10 @@ if (FFX_CLASSIFIER OR FFX_ALL)
     include (CMakeShadersClassifier.txt)
 endif()
 
+# foreach (XXX ${FFX_SC_PERMUTATION_OUTPUTS})
+# 	message (STATUS "FFX_SC_PERMUTATION_OUTPUTS:${XXX}")
+# endforeach()
+
 add_custom_target(ffx_shader_permutations_vk DEPENDS ${FFX_SC_PERMUTATION_OUTPUTS})
 add_dependencies(${FFX_SC_DEPENDENT_TARGET} ffx_shader_permutations_vk)
 

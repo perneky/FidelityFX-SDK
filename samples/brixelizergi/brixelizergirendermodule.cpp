@@ -1,7 +1,7 @@
 // This file is part of the FidelityFX SDK.
 //
 // Copyright (C) 2024 Advanced Micro Devices, Inc.
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files(the "Software"), to deal
 // in the Software without restriction, including without limitation the rights
@@ -99,10 +99,10 @@ void BrixelizerGIRenderModule::Init(const json& initData)
     }
 
     // Create cascade AABB trees
-    for (uint32_t i = 0; i < _countof(m_pCascadeAABBTrees); ++i)
+    for (uint32_t i = 0; i < std::size(m_pCascadeAABBTrees); ++i)
     {
         wchar_t name[64] = {};
-        swprintf(name, _countof(name), L"Brixelizer Cascade[%u] AABB Tree", i);
+        swprintf(name, std::size(name), L"Brixelizer Cascade[%u] AABB Tree", i);
 
         BufferDesc desc = {};
         desc.Type       = BufferType::Data;
@@ -116,10 +116,10 @@ void BrixelizerGIRenderModule::Init(const json& initData)
     }
 
     // Create cascade brick maps
-    for (uint32_t i = 0; i < _countof(m_pCascadeBrickMaps); ++i)
+    for (uint32_t i = 0; i < std::size(m_pCascadeBrickMaps); ++i)
     {
         wchar_t name[64] = {};
-        swprintf(name, _countof(name), L"Brixelizer Cascade[%u] Brick Map", i);
+        swprintf(name, std::size(name), L"Brixelizer Cascade[%u] Brick Map", i);
 
         BufferDesc desc = {};
         desc.Type       = BufferType::Data;
@@ -284,17 +284,20 @@ void BrixelizerGIRenderModule::Init(const json& initData)
             m_pDeferredLightingParameterSet->SetTextureSRV(pShadowMapResourcePool->GetRenderTarget(i), ViewDimension::Texture2D, 7 + i);
         }
     }
-    
+
     // Setup Cauldron FidelityFX interface.
     const size_t scratchBufferSize = SDKWrapper::ffxGetScratchMemorySize(2);
     void*        scratchBuffer     = malloc(scratchBufferSize);
     memset(scratchBuffer, 0, scratchBufferSize);
-    FfxErrorCode errorCode         = SDKWrapper::ffxGetInterface(&m_InitializationParameters.backendInterface, GetDevice(), scratchBuffer, scratchBufferSize, 2);
+    FfxErrorCode errorCode = SDKWrapper::ffxGetInterface(&m_InitializationParameters.backendInterface, GetDevice(), scratchBuffer, scratchBufferSize, 2);
     CauldronAssert(ASSERT_CRITICAL, errorCode == FFX_OK, L"Could not initialize the FidelityFX SDK backend");
 
-    if (errorCode == FFX_OK) {
-        CauldronAssert(ASSERT_CRITICAL, m_InitializationParameters.backendInterface.fpGetSDKVersion(&m_InitializationParameters.backendInterface) == FFX_SDK_MAKE_VERSION(1, 1, 4),
-                           L"FidelityFX Brixelizer GI sample requires linking with a 1.1.4 version SDK backend.");
+    if (errorCode == FFX_OK)
+    {
+        CauldronAssert(
+            ASSERT_CRITICAL,
+            m_InitializationParameters.backendInterface.fpGetSDKVersion(&m_InitializationParameters.backendInterface) == FFX_SDK_MAKE_VERSION(1, 1, 4),
+            L"FidelityFX Brixelizer GI sample requires linking with a 1.1.4 version SDK backend.");
     }
 
     CreateBrixelizerContext();
@@ -371,7 +374,8 @@ void BrixelizerGIRenderModule::Execute(double deltaTime, CommandList* pCmdList)
     if (m_InitializationParameters.cascadeDescs[1].voxelSize != m_MeshUnitSize * m_CascadeSizeRatio)
         RecreateBrixelizerContext();
 
-    if (m_InitColorHistory) {
+    if (m_InitColorHistory)
+    {
         DeferredLighting(pCmdList, false);
 
         CopyHistoryResources(pCmdList);
@@ -583,10 +587,12 @@ void BrixelizerGIRenderModule::FlushInstances(bool flushStaticInstances)
             instanceDesc.aabb.min[i] = minExtents[i];
             instanceDesc.aabb.max[i] = maxExtents[i];
         }
-        
-        for (uint32_t row = 0; row < 3; ++row) {
-            for (uint32_t col = 0; col < 4; ++col) {
-                instanceDesc.transform[row*4 + col] = transform.getCol(col)[row];
+
+        for (uint32_t row = 0; row < 3; ++row)
+        {
+            for (uint32_t col = 0; col < 4; ++col)
+            {
+                instanceDesc.transform[row * 4 + col] = transform.getCol(col)[row];
             }
         }
 
@@ -645,8 +651,8 @@ void BrixelizerGIRenderModule::CreateBrixelizerContext()
     for (uint32_t i = 0; i < m_InitializationParameters.numCascades; ++i)
     {
         FfxBrixelizerCascadeDescription* cascadeDesc = &m_InitializationParameters.cascadeDescs[i];
-        cascadeDesc->flags                    = (FfxBrixelizerCascadeFlag)(FFX_BRIXELIZER_CASCADE_STATIC | FFX_BRIXELIZER_CASCADE_DYNAMIC);
-        cascadeDesc->voxelSize                = voxelSize;
+        cascadeDesc->flags                           = (FfxBrixelizerCascadeFlag)(FFX_BRIXELIZER_CASCADE_STATIC | FFX_BRIXELIZER_CASCADE_DYNAMIC);
+        cascadeDesc->voxelSize                       = voxelSize;
         voxelSize *= m_CascadeSizeRatio;
     }
 
@@ -655,9 +661,11 @@ void BrixelizerGIRenderModule::CreateBrixelizerContext()
     FfxErrorCode errorCode = ffxBrixelizerContextCreate(&m_InitializationParameters, &m_BrixelizerContext);
     CauldronAssert(AssertLevel::ASSERT_ERROR, errorCode == FFX_OK, L"Failed to create Brixelizer context.");
 
-    if (errorCode == FFX_OK) {
-        CauldronAssert(ASSERT_CRITICAL, ffxBrixelizerGetEffectVersion() == FFX_SDK_MAKE_VERSION(1, 0, 0),
-                           L"FidelityFX Brixelizer GI sample requires linking with a 1.0 version Brixelizer library.");
+    if (errorCode == FFX_OK)
+    {
+        CauldronAssert(ASSERT_CRITICAL,
+                       ffxBrixelizerGetEffectVersion() == FFX_SDK_MAKE_VERSION(1, 0, 0),
+                       L"FidelityFX Brixelizer GI sample requires linking with a 1.0 version Brixelizer library.");
     }
 }
 
@@ -689,19 +697,25 @@ void BrixelizerGIRenderModule::UpdateBrixelizerContext(cauldron::CommandList* pC
         std::vector<Barrier> barriers;
 
         if (m_pGpuScratchBuffer->GetResource()->GetCurrentResourceState() != ResourceState::UnorderedAccess)
-            barriers.push_back(Barrier::Transition(m_pGpuScratchBuffer->GetResource(), m_pGpuScratchBuffer->GetResource()->GetCurrentResourceState(), ResourceState::UnorderedAccess));
+            barriers.push_back(Barrier::Transition(
+                m_pGpuScratchBuffer->GetResource(), m_pGpuScratchBuffer->GetResource()->GetCurrentResourceState(), ResourceState::UnorderedAccess));
 
         if (m_pColorTarget->GetResource()->GetCurrentResourceState() == ResourceState::UnorderedAccess)
-            barriers.push_back(Barrier::Transition(m_pColorTarget->GetResource(), m_pColorTarget->GetResource()->GetCurrentResourceState(), ResourceState::UnorderedAccess));
-        
-        barriers.push_back(Barrier::Transition(m_pSdfAtlas->GetResource(), m_pSdfAtlas->GetResource()->GetCurrentResourceState(), ResourceState::UnorderedAccess));
-        barriers.push_back(Barrier::Transition(m_pBrickAABBs->GetResource(), m_pBrickAABBs->GetResource()->GetCurrentResourceState(), ResourceState::UnorderedAccess));
+            barriers.push_back(
+                Barrier::Transition(m_pColorTarget->GetResource(), m_pColorTarget->GetResource()->GetCurrentResourceState(), ResourceState::UnorderedAccess));
+
+        barriers.push_back(
+            Barrier::Transition(m_pSdfAtlas->GetResource(), m_pSdfAtlas->GetResource()->GetCurrentResourceState(), ResourceState::UnorderedAccess));
+        barriers.push_back(
+            Barrier::Transition(m_pBrickAABBs->GetResource(), m_pBrickAABBs->GetResource()->GetCurrentResourceState(), ResourceState::UnorderedAccess));
 
         for (const Buffer* aabbTree : m_pCascadeAABBTrees)
-            barriers.push_back(Barrier::Transition(aabbTree->GetResource(), aabbTree->GetResource()->GetCurrentResourceState(), ResourceState::UnorderedAccess));
+            barriers.push_back(
+                Barrier::Transition(aabbTree->GetResource(), aabbTree->GetResource()->GetCurrentResourceState(), ResourceState::UnorderedAccess));
 
         for (const Buffer* brickMap : m_pCascadeBrickMaps)
-            barriers.push_back(Barrier::Transition(brickMap->GetResource(), brickMap->GetResource()->GetCurrentResourceState(), ResourceState::UnorderedAccess));
+            barriers.push_back(
+                Barrier::Transition(brickMap->GetResource(), brickMap->GetResource()->GetCurrentResourceState(), ResourceState::UnorderedAccess));
 
         ResourceBarrier(pCmdList, (uint32_t)barriers.size(), barriers.data());
     }
@@ -719,8 +733,10 @@ void BrixelizerGIRenderModule::UpdateBrixelizerContext(cauldron::CommandList* pC
 
     for (uint32_t i = 0; i < FFX_BRIXELIZER_MAX_CASCADES; ++i)
     {
-        updateDesc.resources.cascadeResources[i].aabbTree = SDKWrapper::ffxGetResource(m_pCascadeAABBTrees[i]->GetResource(), (wchar_t*)m_pCascadeAABBTrees[i]->GetDesc().Name.c_str(), FFX_RESOURCE_STATE_UNORDERED_ACCESS);
-        updateDesc.resources.cascadeResources[i].brickMap = SDKWrapper::ffxGetResource(m_pCascadeBrickMaps[i]->GetResource(), (wchar_t*)m_pCascadeBrickMaps[i]->GetDesc().Name.c_str(), FFX_RESOURCE_STATE_UNORDERED_ACCESS);
+        updateDesc.resources.cascadeResources[i].aabbTree = SDKWrapper::ffxGetResource(
+            m_pCascadeAABBTrees[i]->GetResource(), (wchar_t*)m_pCascadeAABBTrees[i]->GetDesc().Name.c_str(), FFX_RESOURCE_STATE_UNORDERED_ACCESS);
+        updateDesc.resources.cascadeResources[i].brickMap = SDKWrapper::ffxGetResource(
+            m_pCascadeBrickMaps[i]->GetResource(), (wchar_t*)m_pCascadeBrickMaps[i]->GetDesc().Name.c_str(), FFX_RESOURCE_STATE_UNORDERED_ACCESS);
     }
 
     updateDesc.frameIndex              = m_FrameIndex;
@@ -754,14 +770,18 @@ void BrixelizerGIRenderModule::UpdateBrixelizerContext(cauldron::CommandList* pC
     {
         std::vector<Barrier> barriers;
 
-        barriers.push_back(Barrier::Transition(m_pSdfAtlas->GetResource(), m_pSdfAtlas->GetResource()->GetCurrentResourceState(), ResourceState::NonPixelShaderResource));
-        barriers.push_back(Barrier::Transition(m_pBrickAABBs->GetResource(), m_pBrickAABBs->GetResource()->GetCurrentResourceState(), ResourceState::NonPixelShaderResource));
+        barriers.push_back(
+            Barrier::Transition(m_pSdfAtlas->GetResource(), m_pSdfAtlas->GetResource()->GetCurrentResourceState(), ResourceState::NonPixelShaderResource));
+        barriers.push_back(
+            Barrier::Transition(m_pBrickAABBs->GetResource(), m_pBrickAABBs->GetResource()->GetCurrentResourceState(), ResourceState::NonPixelShaderResource));
 
         for (const Buffer* aabbTree : m_pCascadeAABBTrees)
-            barriers.push_back(Barrier::Transition(aabbTree->GetResource(), aabbTree->GetResource()->GetCurrentResourceState(), ResourceState::NonPixelShaderResource));
+            barriers.push_back(
+                Barrier::Transition(aabbTree->GetResource(), aabbTree->GetResource()->GetCurrentResourceState(), ResourceState::NonPixelShaderResource));
 
         for (const Buffer* brickMap : m_pCascadeBrickMaps)
-            barriers.push_back(Barrier::Transition(brickMap->GetResource(), brickMap->GetResource()->GetCurrentResourceState(), ResourceState::NonPixelShaderResource));
+            barriers.push_back(
+                Barrier::Transition(brickMap->GetResource(), brickMap->GetResource()->GetCurrentResourceState(), ResourceState::NonPixelShaderResource));
 
         ResourceBarrier(pCmdList, (uint32_t)barriers.size(), barriers.data());
     }
@@ -789,19 +809,19 @@ void BrixelizerGIRenderModule::UpdateBrixelizerContext(cauldron::CommandList* pC
 
         char buffer[1024] = {};
 
-        snprintf(buffer, _countof(buffer), "Free Bricks:             %8llu", freeBricks);
+        snprintf(buffer, std::size(buffer), "Free Bricks:             %8llu", freeBricks);
         m_FreeBricksTextElement->SetDesc(buffer);
-        snprintf(buffer, _countof(buffer), "Max Static Bricks:       %8llu", m_MaxStaticBricks);
+        snprintf(buffer, std::size(buffer), "Max Static Bricks:       %8llu", m_MaxStaticBricks);
         m_StaticBricksTextElement->SetDesc(buffer);
-        snprintf(buffer, _countof(buffer), "Max Static Triangles:    %8llu", m_MaxStaticTriangles);
+        snprintf(buffer, std::size(buffer), "Max Static Triangles:    %8llu", m_MaxStaticTriangles);
         m_StaticTrianglesTextElement->SetDesc(buffer);
-        snprintf(buffer, _countof(buffer), "Max Static References:   %8llu", m_MaxStaticReferences);
+        snprintf(buffer, std::size(buffer), "Max Static References:   %8llu", m_MaxStaticReferences);
         m_StaticReferencesTextElement->SetDesc(buffer);
-        snprintf(buffer, _countof(buffer), "Max Dynamic Bricks:      %8llu", m_MaxDynamicBricks);
+        snprintf(buffer, std::size(buffer), "Max Dynamic Bricks:      %8llu", m_MaxDynamicBricks);
         m_DynamicBricksTextElement->SetDesc(buffer);
-        snprintf(buffer, _countof(buffer), "Max Dynamic Triangles:   %8llu", m_MaxDynamicTriangles);
+        snprintf(buffer, std::size(buffer), "Max Dynamic Triangles:   %8llu", m_MaxDynamicTriangles);
         m_DynamicTrianglesTextElement->SetDesc(buffer);
-        snprintf(buffer, _countof(buffer), "Max Dynamic References:  %8llu", m_MaxDynamicReferences);
+        snprintf(buffer, std::size(buffer), "Max Dynamic References:  %8llu", m_MaxDynamicReferences);
         m_DynamicReferencesTextElement->SetDesc(buffer);
     }
 }
@@ -940,10 +960,10 @@ void BrixelizerGIRenderModule::DispatchExampleShader(cauldron::CommandList* pCmd
     m_pExampleParameterSet->SetBufferSRV(m_pBrickAABBs, 0);
     m_pExampleParameterSet->SetTextureSRV(m_pSdfAtlas, ViewDimension::Texture3D, 1);
 
-    for (uint32_t i = 0; i < _countof(m_pCascadeAABBTrees); ++i)
+    for (uint32_t i = 0; i < std::size(m_pCascadeAABBTrees); ++i)
         m_pExampleParameterSet->SetBufferSRV(m_pCascadeAABBTrees[i], 2 + i);
 
-    for (uint32_t i = 0; i < _countof(m_pCascadeBrickMaps); ++i)
+    for (uint32_t i = 0; i < std::size(m_pCascadeBrickMaps); ++i)
         m_pExampleParameterSet->SetBufferSRV(m_pCascadeBrickMaps[i], 26 + i);
 
     m_pExampleParameterSet->SetTextureUAV(m_pColorTarget, ViewDimension::Texture2D, 0);
@@ -956,7 +976,8 @@ void BrixelizerGIRenderModule::DispatchExampleShader(cauldron::CommandList* pCmd
 
     // Render modules expect resources coming in/going out to be in a shader read state
     {
-        Barrier barriers[] = {Barrier::Transition(m_pColorTarget->GetResource(), ResourceState::UnorderedAccess, ResourceState::NonPixelShaderResource | ResourceState::PixelShaderResource)};
+        Barrier barriers[] = {Barrier::Transition(
+            m_pColorTarget->GetResource(), ResourceState::UnorderedAccess, ResourceState::NonPixelShaderResource | ResourceState::PixelShaderResource)};
         ResourceBarrier(pCmdList, 1, barriers);
     }
 }
@@ -975,9 +996,11 @@ void BrixelizerGIRenderModule::CreateBrixelizerGIContext()
     FfxErrorCode errorCode = ffxBrixelizerGIContextCreate(&m_BrixelizerGIContext, &desc);
     CauldronAssert(AssertLevel::ASSERT_ERROR, errorCode == FFX_OK, L"Failed to create Brixelizer GI context.");
 
-    if (errorCode == FFX_OK) {
-        CauldronAssert(ASSERT_CRITICAL, ffxBrixelizerGIGetEffectVersion() == FFX_SDK_MAKE_VERSION(1, 0, 1),
-                           L"FidelityFX Brixelizer GI sample requires linking with a 1.0.1 version Brixelizer GI library.");
+    if (errorCode == FFX_OK)
+    {
+        CauldronAssert(ASSERT_CRITICAL,
+                       ffxBrixelizerGIGetEffectVersion() == FFX_SDK_MAKE_VERSION(1, 0, 1),
+                       L"FidelityFX Brixelizer GI sample requires linking with a 1.0.1 version Brixelizer GI library.");
     }
 }
 
@@ -1005,8 +1028,8 @@ void BrixelizerGIRenderModule::UpdateBrixelizerGIContext(cauldron::CommandList* 
     {
         GPUScopedProfileCapture marker(pCmdList, L"Brixelizer GI Update");
 
-        const ResourceState diffuseGIState    = m_pDiffuseGI->GetResource()->GetCurrentResourceState();
-        const ResourceState specularGIState   = m_pSpecularGI->GetResource()->GetCurrentResourceState();
+        const ResourceState diffuseGIState  = m_pDiffuseGI->GetResource()->GetCurrentResourceState();
+        const ResourceState specularGIState = m_pSpecularGI->GetResource()->GetCurrentResourceState();
 
         {
             Barrier barriers[] = {Barrier::Transition(m_pDiffuseGI->GetResource(), diffuseGIState, ResourceState::NonPixelShaderResource),
@@ -1018,9 +1041,9 @@ void BrixelizerGIRenderModule::UpdateBrixelizerGIContext(cauldron::CommandList* 
 
         const SceneLightingInformation& lightingInfo = GetScene()->GetSceneLightInfo();
 
-        memcpy(&m_GIDispatchDesc.view,           &view,             sizeof(m_GIDispatchDesc.view));
-        memcpy(&m_GIDispatchDesc.projection,     &projection,       sizeof(m_GIDispatchDesc.projection));
-        memcpy(&m_GIDispatchDesc.prevView,       &prevView,         sizeof(m_GIDispatchDesc.prevView));
+        memcpy(&m_GIDispatchDesc.view, &view, sizeof(m_GIDispatchDesc.view));
+        memcpy(&m_GIDispatchDesc.projection, &projection, sizeof(m_GIDispatchDesc.projection));
+        memcpy(&m_GIDispatchDesc.prevView, &prevView, sizeof(m_GIDispatchDesc.prevView));
         memcpy(&m_GIDispatchDesc.prevProjection, &m_PrevProjection, sizeof(m_GIDispatchDesc.prevProjection));
         m_PrevProjection = projection;
 
@@ -1041,35 +1064,39 @@ void BrixelizerGIRenderModule::UpdateBrixelizerGIContext(cauldron::CommandList* 
         m_GIDispatchDesc.roughnessChannel        = 1;
         m_GIDispatchDesc.roughnessThreshold      = 0.9f;
         m_GIDispatchDesc.environmentMapIntensity = 0.1f;
-        m_GIDispatchDesc.motionVectorScale       = { 1.0f, 1.0f};    
+        m_GIDispatchDesc.motionVectorScale       = {1.0f, 1.0f};
 
         m_GIDispatchDesc.depth         = SDKWrapper::ffxGetResource(m_pDepthBuffer->GetResource(), L"Depth");
         m_GIDispatchDesc.normal        = SDKWrapper::ffxGetResource(m_pNormalTarget->GetResource(), L"Normal");
         m_GIDispatchDesc.roughness     = SDKWrapper::ffxGetResource(m_pRoughnessTarget->GetResource(), L"Roughness");
         m_GIDispatchDesc.motionVectors = SDKWrapper::ffxGetResource(m_pVelocityBuffer->GetResource(), L"MotionVectors");
 
-        m_GIDispatchDesc.historyDepth     = SDKWrapper::ffxGetResource(m_pHistoryDepth->GetResource(), L"HistoryDepth");
-        m_GIDispatchDesc.historyNormal    = SDKWrapper::ffxGetResource(m_pHistoryNormals->GetResource(), L"HistoryNormal");
-        m_GIDispatchDesc.prevLitOutput    = SDKWrapper::ffxGetResource(m_pHistoryLitOutput->GetResource(), L"PrevLitOutput");
-        m_GIDispatchDesc.noiseTexture     = SDKWrapper::ffxGetResource(m_NoiseTextures[m_FrameIndex % g_NumNoiseTextures]->GetResource(), L"NoiseTexture");
-        m_GIDispatchDesc.environmentMap   = SDKWrapper::ffxGetResource(m_pEnivornmentMap->GetResource(), L"EnvironmentMap");
+        m_GIDispatchDesc.historyDepth   = SDKWrapper::ffxGetResource(m_pHistoryDepth->GetResource(), L"HistoryDepth");
+        m_GIDispatchDesc.historyNormal  = SDKWrapper::ffxGetResource(m_pHistoryNormals->GetResource(), L"HistoryNormal");
+        m_GIDispatchDesc.prevLitOutput  = SDKWrapper::ffxGetResource(m_pHistoryLitOutput->GetResource(), L"PrevLitOutput");
+        m_GIDispatchDesc.noiseTexture   = SDKWrapper::ffxGetResource(m_NoiseTextures[m_FrameIndex % g_NumNoiseTextures]->GetResource(), L"NoiseTexture");
+        m_GIDispatchDesc.environmentMap = SDKWrapper::ffxGetResource(m_pEnivornmentMap->GetResource(), L"EnvironmentMap");
 
-        m_GIDispatchDesc.sdfAtlas    = SDKWrapper::ffxGetResource(m_pSdfAtlas->GetResource(), (wchar_t*)m_pSdfAtlas->GetDesc().Name.c_str(), FFX_RESOURCE_STATE_COMPUTE_READ);
-        m_GIDispatchDesc.bricksAABBs = SDKWrapper::ffxGetResource(m_pBrickAABBs->GetResource(), (wchar_t*)m_pBrickAABBs->GetDesc().Name.c_str(), FFX_RESOURCE_STATE_COMPUTE_READ);
-        
+        m_GIDispatchDesc.sdfAtlas =
+            SDKWrapper::ffxGetResource(m_pSdfAtlas->GetResource(), (wchar_t*)m_pSdfAtlas->GetDesc().Name.c_str(), FFX_RESOURCE_STATE_COMPUTE_READ);
+        m_GIDispatchDesc.bricksAABBs =
+            SDKWrapper::ffxGetResource(m_pBrickAABBs->GetResource(), (wchar_t*)m_pBrickAABBs->GetDesc().Name.c_str(), FFX_RESOURCE_STATE_COMPUTE_READ);
+
         for (uint32_t i = 0; i < FFX_BRIXELIZER_MAX_CASCADES; ++i)
         {
-            m_GIDispatchDesc.cascadeAABBTrees[i] = SDKWrapper::ffxGetResource(m_pCascadeAABBTrees[i]->GetResource(), (wchar_t*)m_pCascadeAABBTrees[i]->GetDesc().Name.c_str(), FFX_RESOURCE_STATE_COMPUTE_READ);
-            m_GIDispatchDesc.cascadeBrickMaps[i] = SDKWrapper::ffxGetResource(m_pCascadeBrickMaps[i]->GetResource(), (wchar_t*)m_pCascadeBrickMaps[i]->GetDesc().Name.c_str(), FFX_RESOURCE_STATE_COMPUTE_READ);
+            m_GIDispatchDesc.cascadeAABBTrees[i] = SDKWrapper::ffxGetResource(
+                m_pCascadeAABBTrees[i]->GetResource(), (wchar_t*)m_pCascadeAABBTrees[i]->GetDesc().Name.c_str(), FFX_RESOURCE_STATE_COMPUTE_READ);
+            m_GIDispatchDesc.cascadeBrickMaps[i] = SDKWrapper::ffxGetResource(
+                m_pCascadeBrickMaps[i]->GetResource(), (wchar_t*)m_pCascadeBrickMaps[i]->GetDesc().Name.c_str(), FFX_RESOURCE_STATE_COMPUTE_READ);
         }
 
-        m_GIDispatchDesc.outputDiffuseGI = SDKWrapper::ffxGetResource(m_pDiffuseGI->GetResource(), L"OutputDiffuseGI");
+        m_GIDispatchDesc.outputDiffuseGI  = SDKWrapper::ffxGetResource(m_pDiffuseGI->GetResource(), L"OutputDiffuseGI");
         m_GIDispatchDesc.outputSpecularGI = SDKWrapper::ffxGetResource(m_pSpecularGI->GetResource(), L"OutputSpecularGI");
-        
+
         FfxErrorCode error = ffxBrixelizerGetRawContext(&m_BrixelizerContext, &m_GIDispatchDesc.brixelizerContext);
         CauldronAssert(AssertLevel::ASSERT_ERROR, error == FFX_OK, L"Failed to get Brixelizer context pointer.");
 
-        ffxBrixelizerGIContextDispatch(&m_BrixelizerGIContext, &m_GIDispatchDesc, SDKWrapper::ffxGetCommandList(pCmdList));    
+        ffxBrixelizerGIContextDispatch(&m_BrixelizerGIContext, &m_GIDispatchDesc, SDKWrapper::ffxGetCommandList(pCmdList));
 
         {
             Barrier barriers[] = {Barrier::Transition(m_pDiffuseGI->GetResource(), ResourceState::NonPixelShaderResource, diffuseGIState),
@@ -1094,7 +1121,7 @@ void BrixelizerGIRenderModule::UpdateBrixelizerGIContext(cauldron::CommandList* 
         memcpy(&debug_desc.view, &view, sizeof(debug_desc.view));
         memcpy(&debug_desc.projection, &projection, sizeof(debug_desc.projection));
 
-        TextureDesc desc = m_pColorTarget->GetDesc();
+        TextureDesc desc            = m_pColorTarget->GetDesc();
         debug_desc.outputSize[0]    = desc.Width;
         debug_desc.outputSize[1]    = desc.Height;
         debug_desc.normalsUnpackMul = 2.0f;
@@ -1105,21 +1132,26 @@ void BrixelizerGIRenderModule::UpdateBrixelizerGIContext(cauldron::CommandList* 
         else if (m_OutputMode == OutputMode::IrradianceCache)
             debug_desc.debugMode = FFX_BRIXELIZER_GI_DEBUG_MODE_IRRADIANCE_CACHE;
 
-        debug_desc.startCascade  = m_StartCascadeIdx + (2 * NUM_BRIXELIZER_CASCADES);
-        debug_desc.endCascade    = m_EndCascadeIdx + (2 * NUM_BRIXELIZER_CASCADES);
-        debug_desc.depth         = SDKWrapper::ffxGetResource(m_pDepthBuffer->GetResource(), L"Depth");
-        debug_desc.normal        = SDKWrapper::ffxGetResource(m_pNormalTarget->GetResource(), L"Normal");
+        debug_desc.startCascade = m_StartCascadeIdx + (2 * NUM_BRIXELIZER_CASCADES);
+        debug_desc.endCascade   = m_EndCascadeIdx + (2 * NUM_BRIXELIZER_CASCADES);
+        debug_desc.depth        = SDKWrapper::ffxGetResource(m_pDepthBuffer->GetResource(), L"Depth");
+        debug_desc.normal       = SDKWrapper::ffxGetResource(m_pNormalTarget->GetResource(), L"Normal");
 
-        debug_desc.sdfAtlas    = SDKWrapper::ffxGetResource(m_pSdfAtlas->GetResource(), (wchar_t*)m_pSdfAtlas->GetDesc().Name.c_str(), FFX_RESOURCE_STATE_COMPUTE_READ);
-        debug_desc.bricksAABBs = SDKWrapper::ffxGetResource(m_pBrickAABBs->GetResource(), (wchar_t*)m_pBrickAABBs->GetDesc().Name.c_str(), FFX_RESOURCE_STATE_COMPUTE_READ);
+        debug_desc.sdfAtlas =
+            SDKWrapper::ffxGetResource(m_pSdfAtlas->GetResource(), (wchar_t*)m_pSdfAtlas->GetDesc().Name.c_str(), FFX_RESOURCE_STATE_COMPUTE_READ);
+        debug_desc.bricksAABBs =
+            SDKWrapper::ffxGetResource(m_pBrickAABBs->GetResource(), (wchar_t*)m_pBrickAABBs->GetDesc().Name.c_str(), FFX_RESOURCE_STATE_COMPUTE_READ);
 
         for (uint32_t i = 0; i < FFX_BRIXELIZER_MAX_CASCADES; ++i)
         {
-            debug_desc.cascadeAABBTrees[i] = SDKWrapper::ffxGetResource(m_pCascadeAABBTrees[i]->GetResource(), (wchar_t*)m_pCascadeAABBTrees[i]->GetDesc().Name.c_str(), FFX_RESOURCE_STATE_COMPUTE_READ);
-            debug_desc.cascadeBrickMaps[i] = SDKWrapper::ffxGetResource(m_pCascadeBrickMaps[i]->GetResource(), (wchar_t*)m_pCascadeBrickMaps[i]->GetDesc().Name.c_str(), FFX_RESOURCE_STATE_COMPUTE_READ);
+            debug_desc.cascadeAABBTrees[i] = SDKWrapper::ffxGetResource(
+                m_pCascadeAABBTrees[i]->GetResource(), (wchar_t*)m_pCascadeAABBTrees[i]->GetDesc().Name.c_str(), FFX_RESOURCE_STATE_COMPUTE_READ);
+            debug_desc.cascadeBrickMaps[i] = SDKWrapper::ffxGetResource(
+                m_pCascadeBrickMaps[i]->GetResource(), (wchar_t*)m_pCascadeBrickMaps[i]->GetDesc().Name.c_str(), FFX_RESOURCE_STATE_COMPUTE_READ);
         }
 
-        debug_desc.outputDebug = SDKWrapper::ffxGetResource(m_pDebugVisualization->GetResource(), L"OutputDebugVisualization", FFX_RESOURCE_STATE_UNORDERED_ACCESS);
+        debug_desc.outputDebug =
+            SDKWrapper::ffxGetResource(m_pDebugVisualization->GetResource(), L"OutputDebugVisualization", FFX_RESOURCE_STATE_UNORDERED_ACCESS);
 
         FfxErrorCode error = ffxBrixelizerGetRawContext(&m_BrixelizerContext, &debug_desc.brixelizerContext);
         CauldronAssert(AssertLevel::ASSERT_ERROR, error == FFX_OK, L"Failed to get Brixelizer context pointer.");
@@ -1148,12 +1180,12 @@ void BrixelizerGIRenderModule::CopyHistoryResource(cauldron::CommandList*   pCmd
 
 void BrixelizerGIRenderModule::CopyHistoryResources(cauldron::CommandList* pCmdList)
 {
-    const ResourceState historyDepthState = m_pHistoryDepth->GetResource()->GetCurrentResourceState();
-    const ResourceState historyNormalsState = m_pHistoryNormals->GetResource()->GetCurrentResourceState();
+    const ResourceState historyDepthState     = m_pHistoryDepth->GetResource()->GetCurrentResourceState();
+    const ResourceState historyNormalsState   = m_pHistoryNormals->GetResource()->GetCurrentResourceState();
     const ResourceState historyLitOutputState = m_pHistoryLitOutput->GetResource()->GetCurrentResourceState();
-    const ResourceState depthState = m_pDepthBuffer->GetResource()->GetCurrentResourceState();
-    const ResourceState normalsState = m_pNormalTarget->GetResource()->GetCurrentResourceState();
-    const ResourceState litOutputState = m_pLitOutputCopy->GetResource()->GetCurrentResourceState();
+    const ResourceState depthState            = m_pDepthBuffer->GetResource()->GetCurrentResourceState();
+    const ResourceState normalsState          = m_pNormalTarget->GetResource()->GetCurrentResourceState();
+    const ResourceState litOutputState        = m_pLitOutputCopy->GetResource()->GetCurrentResourceState();
 
     {
         Barrier barriers[] = {
@@ -1164,7 +1196,7 @@ void BrixelizerGIRenderModule::CopyHistoryResources(cauldron::CommandList* pCmdL
             Barrier::Transition(m_pNormalTarget->GetResource(), normalsState, ResourceState::CopySource),
             Barrier::Transition(m_pLitOutputCopy->GetResource(), litOutputState, ResourceState::CopySource),
         };
-        ResourceBarrier(pCmdList, _countof(barriers), barriers);
+        ResourceBarrier(pCmdList, std::size(barriers), barriers);
     }
 
     CopyHistoryResource(pCmdList, m_pDepthBuffer, m_pHistoryDepth, L"Depth");
@@ -1180,7 +1212,7 @@ void BrixelizerGIRenderModule::CopyHistoryResources(cauldron::CommandList* pCmdL
             Barrier::Transition(m_pNormalTarget->GetResource(), ResourceState::CopySource, normalsState),
             Barrier::Transition(m_pLitOutputCopy->GetResource(), ResourceState::CopySource, litOutputState),
         };
-        ResourceBarrier(pCmdList, _countof(barriers), barriers);
+        ResourceBarrier(pCmdList, std::size(barriers), barriers);
     }
 }
 
@@ -1193,10 +1225,11 @@ void BrixelizerGIRenderModule::DeferredLighting(cauldron::CommandList* pCmdList,
 
     if (currentState != ResourceState::UnorderedAccess)
     {
-        Barrier barriers[] = {currentState == ResourceState::UnorderedAccess ? Barrier::UAV(m_pColorTarget->GetResource()) : Barrier::Transition(m_pColorTarget->GetResource(), currentState, ResourceState::UnorderedAccess),
-                              Barrier::Transition(m_pLitOutputCopy->GetResource(), copyCurrentState, ResourceState::UnorderedAccess)
-        };
-        
+        Barrier barriers[] = {currentState == ResourceState::UnorderedAccess
+                                  ? Barrier::UAV(m_pColorTarget->GetResource())
+                                  : Barrier::Transition(m_pColorTarget->GetResource(), currentState, ResourceState::UnorderedAccess),
+                              Barrier::Transition(m_pLitOutputCopy->GetResource(), copyCurrentState, ResourceState::UnorderedAccess)};
+
         ResourceBarrier(pCmdList, 2, barriers);
     }
 
@@ -1222,12 +1255,13 @@ void BrixelizerGIRenderModule::DeferredLighting(cauldron::CommandList* pCmdList,
     // Update necessary scene frame information
     BufferAddressInfo sceneBuffers[2];
     sceneBuffers[0] = GetDynamicBufferPool()->AllocConstantBuffer(sizeof(SceneInformation), reinterpret_cast<const void*>(&GetScene()->GetSceneInfo()));
-    sceneBuffers[1] = GetDynamicBufferPool()->AllocConstantBuffer(sizeof(SceneLightingInformation), reinterpret_cast<const void*>(&GetScene()->GetSceneLightInfo()));
+    sceneBuffers[1] =
+        GetDynamicBufferPool()->AllocConstantBuffer(sizeof(SceneLightingInformation), reinterpret_cast<const void*>(&GetScene()->GetSceneLightInfo()));
     m_pDeferredLightingParameterSet->UpdateRootConstantBuffer(&sceneBuffers[0], 0);
     m_pDeferredLightingParameterSet->UpdateRootConstantBuffer(&sceneBuffers[1], 1);
 
     // Allocate a dynamic constant buffers and set
-    GIConstants giConstants = {};
+    GIConstants giConstants      = {};
     giConstants.DiffuseGIFactor  = enableGI ? m_DiffuseGIFactor : 0.0f;
     giConstants.SpecularGIFactor = enableGI ? m_SpecularGIFactor : 0.0f;
     giConstants.MultiBounce      = m_FrameIndex == 0 ? 0 : static_cast<int>(m_MultiBounce);
@@ -1263,8 +1297,7 @@ void BrixelizerGIRenderModule::DeferredLighting(cauldron::CommandList* pCmdList,
     // Render modules expect resources coming in/going out to be in a shader read state
     {
         Barrier barriers[] = {Barrier::Transition(m_pColorTarget->GetResource(), ResourceState::UnorderedAccess, currentState),
-                              Barrier::Transition(m_pLitOutputCopy->GetResource(), ResourceState::UnorderedAccess, copyCurrentState)
-        };
+                              Barrier::Transition(m_pLitOutputCopy->GetResource(), ResourceState::UnorderedAccess, copyCurrentState)};
         ResourceBarrier(pCmdList, 2, barriers);
     }
 }
@@ -1325,15 +1358,19 @@ void BrixelizerGIRenderModule::InitUI(cauldron::UISection* uiSection)
     m_CommonUIElements.emplace_back(uiSection->RegisterUIElement<UISlider<float>>("Cascade Size Ratio", m_CascadeSizeRatio, 1.1f, 3.0f));
 
     m_StaticUIElements.emplace_back(uiSection->RegisterUIElement<UIText>("Dynamic Settings"));
-    static std::vector<const char*> outputModeComboOptions = {"None", "Example Shader", "Debug Visualization", "Diffuse GI", "Specular GI", "Radiance Cache", "Irradiance Cache"};
+    static std::vector<const char*> outputModeComboOptions = {
+        "None", "Example Shader", "Debug Visualization", "Diffuse GI", "Specular GI", "Radiance Cache", "Irradiance Cache"};
     m_StaticUIElements.emplace_back(uiSection->RegisterUIElement<UICombo>("Output Mode", (int32_t&)m_OutputMode, std::move(outputModeComboOptions)));
     static std::vector<const char*> exampleOutputTypeComboOptions = {"Distance", "UVW", "Iterations", "Gradient", "Brick ID"};
-    m_ExampleUIElements.emplace_back(uiSection->RegisterUIElement<UICombo>("Output Type", (int32_t&)m_ExampleOutputType, std::move(exampleOutputTypeComboOptions)));
+    m_ExampleUIElements.emplace_back(
+        uiSection->RegisterUIElement<UICombo>("Output Type", (int32_t&)m_ExampleOutputType, std::move(exampleOutputTypeComboOptions)));
     static std::vector<const char*> debugOutputTypeComboOptions = {"Distance", "UVW", "Iterations", "Gradient", "Brick ID", "Cascade ID"};
-    m_DebugUIElements.emplace_back(uiSection->RegisterUIElement<UICombo>("Output Type", (int32_t&)m_DebugVisOutputType, std::move(debugOutputTypeComboOptions)));
+    m_DebugUIElements.emplace_back(
+        uiSection->RegisterUIElement<UICombo>("Output Type", (int32_t&)m_DebugVisOutputType, std::move(debugOutputTypeComboOptions)));
     static std::vector<const char*> cascadeTypeComboOptions = {"Static", "Dynamic", "Merged"};
     m_DebugUIElements.emplace_back(uiSection->RegisterUIElement<UICombo>("Cascade Type", (int32_t&)m_CascadeType, std::move(cascadeTypeComboOptions)));
-    m_CommonUIElements.emplace_back(uiSection->RegisterUIElement<UISlider<int32_t>>("Start Cascade", (int32_t&)m_StartCascadeIdx, 0, NUM_BRIXELIZER_CASCADES - 1));
+    m_CommonUIElements.emplace_back(
+        uiSection->RegisterUIElement<UISlider<int32_t>>("Start Cascade", (int32_t&)m_StartCascadeIdx, 0, NUM_BRIXELIZER_CASCADES - 1));
     m_CommonUIElements.emplace_back(uiSection->RegisterUIElement<UISlider<int32_t>>("End Cascade", (int32_t&)m_EndCascadeIdx, 0, NUM_BRIXELIZER_CASCADES - 1));
     m_CommonUIElements.emplace_back(uiSection->RegisterUIElement<UISlider<float>>("SDF Solve Epsilon", m_SdfSolveEps, 1e-6f, 1.0f));
     m_CommonUIElements.emplace_back(uiSection->RegisterUIElement<UICheckBox>("SDF Center Follow Camera", m_SdfCenterFollowCamera));
@@ -1347,7 +1384,8 @@ void BrixelizerGIRenderModule::InitUI(cauldron::UISection* uiSection)
     m_DebugUIElements.emplace_back(uiSection->RegisterUIElement<UICheckBox>("Show Static Instance AABBs", m_ShowStaticInstanceAABBs));
     m_DebugUIElements.emplace_back(uiSection->RegisterUIElement<UICheckBox>("Show Dynamic Instance AABBs", m_ShowDynamicInstanceAABBs));
     m_DebugUIElements.emplace_back(uiSection->RegisterUIElement<UICheckBox>("Show Cascade AABBs", m_ShowCascadeAABBs));
-    m_DebugUIElements.emplace_back(uiSection->RegisterUIElement<UISlider<int32_t>>("Show AABB Tree Index", m_ShowAABBTreeIndex, -1, NUM_BRIXELIZER_CASCADES - 1));
+    m_DebugUIElements.emplace_back(
+        uiSection->RegisterUIElement<UISlider<int32_t>>("Show AABB Tree Index", m_ShowAABBTreeIndex, -1, NUM_BRIXELIZER_CASCADES - 1));
     m_ExampleUIElements.emplace_back(uiSection->RegisterUIElement<UICheckBox>("Show Brick Outlines", m_ShowBrickOutlines));
     m_ExampleUIElements.emplace_back(uiSection->RegisterUIElement<UISlider<float>>("Alpha", m_Alpha, 0.0f, 1.0f));
 
@@ -1436,13 +1474,13 @@ uint32_t BrixelizerGIRenderModule::GetBufferIndex(const cauldron::Buffer* buffer
     const GPUResource* resource   = buffer->GetResource();
 
     wchar_t name[256] = {};
-    _snwprintf_s(name, _countof(name), L"Vertex Buffer (\"%s\")", bufferDesc.Name.c_str());
+    _snwprintf_s(name, std::size(name), L"Vertex Buffer (\"%s\")", bufferDesc.Name.c_str());
     FfxResource ffxResource = SDKWrapper::ffxGetResource(resource, name, FFX_RESOURCE_STATE_PIXEL_COMPUTE_READ);
 
-    uint32_t                bufferIndex          = 0;
+    uint32_t                       bufferIndex          = 0;
     FfxBrixelizerBufferDescription brixelizerBufferDesc = {};
-    brixelizerBufferDesc.buffer                  = ffxResource;
-    brixelizerBufferDesc.outIndex                = &bufferIndex;
+    brixelizerBufferDesc.buffer                         = ffxResource;
+    brixelizerBufferDesc.outIndex                       = &bufferIndex;
     ffxBrixelizerRegisterBuffers(&m_BrixelizerContext, &brixelizerBufferDesc, 1);
 
     BrixelizerBufferInfo info;

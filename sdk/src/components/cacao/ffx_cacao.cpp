@@ -1,7 +1,7 @@
 // This file is part of the FidelityFX SDK.
 //
 // Copyright (C) 2024 Advanced Micro Devices, Inc.
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files(the "Software"), to deal
 // in the Software without restriction, including without limitation the rights
@@ -20,8 +20,8 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-#include <cstring>   // memcpy
-#include <cmath>     // cos, sin
+#include <cstring>  // memcpy
+#include <cmath>    // cos, sin
 #include <stdexcept>
 
 #ifdef __clang__
@@ -44,17 +44,13 @@
 #define FFX_CACAO_CLAMP(value, lower, upper) FFX_CACAO_MIN(FFX_CACAO_MAX(value, lower), upper)
 
 #define MATRIX_ROW_MAJOR_ORDER 1
-#define MAX_BLUR_PASSES 8
+#define MAX_BLUR_PASSES        8
 
 static const FfxFloat32x4x4 FFX_CACAO_IDENTITY_MATRIX = {
-    
-    1.0f, 0.0f, 0.0f, 0.0f,
-    0.0f, 1.0f, 0.0f, 0.0f,
-    0.0f, 0.0f, 1.0f, 0.0f,
-    0.0f, 0.0f, 0.0f, 1.0f
-    
-};
 
+    1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f
+
+};
 
 inline static uint32_t dispatchSize(uint32_t tileSize, uint32_t totalSize)
 {
@@ -176,18 +172,17 @@ void ffxCacaoUpdateConstants(FfxCacaoConstants*            consts,
     // used to get average load per pixel; 9.0 is there to compensate for only doing every 9th InterlockedAdd in PSPostprocessImportanceMapB for performance reasons
     consts->LoadCounterAvgDiv = 9.0f / (float)(bufferSizeInfo->importanceMapWidth * bufferSizeInfo->importanceMapHeight * 255.0);
 
-    const float depthLinearizeMul = (MATRIX_ROW_MAJOR_ORDER) ? (-(*proj)[14])
-                                                       : (-(*proj)[11]);  // float depthLinearizeMul = ( clipFar * clipNear ) / ( clipFar - clipNear );
-    float depthLinearizeAdd = (MATRIX_ROW_MAJOR_ORDER) ? ((*proj)[10]) 
-                                                       : ((*proj)[10]);  // float depthLinearizeAdd = clipFar / ( clipFar - clipNear );
+    const float depthLinearizeMul =
+        (MATRIX_ROW_MAJOR_ORDER) ? (-(*proj)[14]) : (-(*proj)[11]);  // float depthLinearizeMul = ( clipFar * clipNear ) / ( clipFar - clipNear );
+    float depthLinearizeAdd = (MATRIX_ROW_MAJOR_ORDER) ? ((*proj)[10]) : ((*proj)[10]);  // float depthLinearizeAdd = clipFar / ( clipFar - clipNear );
     // correct the handedness issue. need to make sure this below is correct, but I think it is.
     if (depthLinearizeMul * depthLinearizeAdd < 0)
         depthLinearizeAdd = -depthLinearizeAdd;
     consts->DepthUnpackConsts[0] = depthLinearizeMul;
     consts->DepthUnpackConsts[1] = depthLinearizeAdd;
 
-    const float tanHalfFOVY           = 1.0f / (*proj)[5];  // = tanf( drawContext.Camera.GetYFOV( ) * 0.5f );
-    const float tanHalfFOVX           = 1.0F / (*proj)[0];  // = tanHalfFOVY * drawContext.Camera.GetAspect( );
+    const float tanHalfFOVY     = 1.0f / (*proj)[5];  // = tanf( drawContext.Camera.GetYFOV( ) * 0.5f );
+    const float tanHalfFOVX     = 1.0F / (*proj)[0];  // = tanHalfFOVY * drawContext.Camera.GetAspect( );
     consts->CameraTanHalfFOV[0] = tanHalfFOVX;
     consts->CameraTanHalfFOV[1] = tanHalfFOVY;
 
@@ -296,10 +291,10 @@ void ffxCacaoUpdateConstants(FfxCacaoConstants*            consts,
     const float additionalRadiusScale =
         settings
             ->temporalSupersamplingRadiusOffset;  // if using temporal supersampling approach (like "Progressive Rendering Using Multi-frame Sampling" from GPU Pro 7, etc.)
-            
-    const int spmap[5]{0, 1, 4, 3, 2};
-    const float PI = 3.1415926535897932384626433832795f;
-    const int subPassCount = FFX_CACAO_ARRAY_SIZE(consts->PatternRotScaleMatrices[0]);
+
+    const int   spmap[5]{0, 1, 4, 3, 2};
+    const float PI           = 3.1415926535897932384626433832795f;
+    const int   subPassCount = FFX_CACAO_ARRAY_SIZE(consts->PatternRotScaleMatrices[0]);
     for (int passId = 0; passId < FFX_CACAO_ARRAY_SIZE(consts->PatternRotScaleMatrices); ++passId)
     {
         for (int subPass = 0; subPass < subPassCount; subPass++)
@@ -308,7 +303,7 @@ void ffxCacaoUpdateConstants(FfxCacaoConstants*            consts,
 
             const int b = spmap[subPass];
 
-            float ca, sa;
+            float       ca, sa;
             const float angle0 = ((float)a + (float)b / (float)subPassCount) * (PI) * 0.5f;
 
             ca = FFX_CACAO_COS(angle0);
@@ -385,8 +380,14 @@ static uint32_t getPipelinePermutationFlags(const uint32_t contextFlags, const b
     return flags;
 }
 
-static FfxErrorCode createCacaoPipeline(FfxCacaoContext_Private* context, const FfxPipelineDescription &pipelineDescription, FfxPipelineState *pipelineState, const FfxPass pass,  const bool fp16, const bool canForceWave64, const bool applySmart = false){
-    
+static FfxErrorCode createCacaoPipeline(FfxCacaoContext_Private*      context,
+                                        const FfxPipelineDescription& pipelineDescription,
+                                        FfxPipelineState*             pipelineState,
+                                        const FfxPass                 pass,
+                                        const bool                    fp16,
+                                        const bool                    canForceWave64,
+                                        const bool                    applySmart = false)
+{
     FFX_VALIDATE(context->contextDescription.backendInterface.fpCreatePipeline(
         &context->contextDescription.backendInterface,
         FFX_EFFECT_CACAO,
@@ -406,49 +407,47 @@ static FfxErrorCode createPipelineStates(FfxCacaoContext_Private* context)
     FFX_ASSERT(context);
 
     // Static Samplers
-    const size_t          samplerCount = 5;
-    const FfxSamplerDescription samplers[samplerCount] = {
-        //Sampler 0
-        { 
-            FFX_FILTER_TYPE_MINMAGMIP_POINT,  //filter
-            FFX_ADDRESS_MODE_CLAMP,           //addressModeU
-            FFX_ADDRESS_MODE_CLAMP,           //addressModeV
-            FFX_ADDRESS_MODE_CLAMP,           //addressModeW
-            FFX_BIND_COMPUTE_SHADER_STAGE,    //stage
-        },
-        //Sampler 1
-        {
-            FFX_FILTER_TYPE_MINMAGMIP_POINT,  //filter
-            FFX_ADDRESS_MODE_MIRROR,          //addressModeU
-            FFX_ADDRESS_MODE_MIRROR,          //addressModeV
-            FFX_ADDRESS_MODE_MIRROR,          //addressModeW
-            FFX_BIND_COMPUTE_SHADER_STAGE,    //stage
-        },
-        //Sampler 2
-        {
-            FFX_FILTER_TYPE_MINMAGMIP_LINEAR,  //filter
-            FFX_ADDRESS_MODE_CLAMP,            //addressModeU
-            FFX_ADDRESS_MODE_CLAMP,            //addressModeV
-            FFX_ADDRESS_MODE_CLAMP,            //addressModeW
-            FFX_BIND_COMPUTE_SHADER_STAGE,     //stage
-        },
-        //Sampler 3
-        {
-            FFX_FILTER_TYPE_MINMAGMIP_POINT,  //filter
-            FFX_ADDRESS_MODE_CLAMP,           //addressModeU
-            FFX_ADDRESS_MODE_CLAMP,           //addressModeV
-            FFX_ADDRESS_MODE_CLAMP,           //addressModeW
-            FFX_BIND_COMPUTE_SHADER_STAGE,    //stage
-        },
-        //Sampler 4
-        {
-            FFX_FILTER_TYPE_MINMAGMIP_POINT,  //filter
-            FFX_ADDRESS_MODE_BORDER,          //addressModeU
-            FFX_ADDRESS_MODE_BORDER,          //addressModeV
-            FFX_ADDRESS_MODE_BORDER,          //addressModeW
-            FFX_BIND_COMPUTE_SHADER_STAGE     //stage
-        }
-    };
+    const size_t                samplerCount           = 5;
+    const FfxSamplerDescription samplers[samplerCount] = {//Sampler 0
+                                                          {
+                                                              FFX_FILTER_TYPE_MINMAGMIP_POINT,  //filter
+                                                              FFX_ADDRESS_MODE_CLAMP,           //addressModeU
+                                                              FFX_ADDRESS_MODE_CLAMP,           //addressModeV
+                                                              FFX_ADDRESS_MODE_CLAMP,           //addressModeW
+                                                              FFX_BIND_COMPUTE_SHADER_STAGE,    //stage
+                                                          },
+                                                          //Sampler 1
+                                                          {
+                                                              FFX_FILTER_TYPE_MINMAGMIP_POINT,  //filter
+                                                              FFX_ADDRESS_MODE_MIRROR,          //addressModeU
+                                                              FFX_ADDRESS_MODE_MIRROR,          //addressModeV
+                                                              FFX_ADDRESS_MODE_MIRROR,          //addressModeW
+                                                              FFX_BIND_COMPUTE_SHADER_STAGE,    //stage
+                                                          },
+                                                          //Sampler 2
+                                                          {
+                                                              FFX_FILTER_TYPE_MINMAGMIP_LINEAR,  //filter
+                                                              FFX_ADDRESS_MODE_CLAMP,            //addressModeU
+                                                              FFX_ADDRESS_MODE_CLAMP,            //addressModeV
+                                                              FFX_ADDRESS_MODE_CLAMP,            //addressModeW
+                                                              FFX_BIND_COMPUTE_SHADER_STAGE,     //stage
+                                                          },
+                                                          //Sampler 3
+                                                          {
+                                                              FFX_FILTER_TYPE_MINMAGMIP_POINT,  //filter
+                                                              FFX_ADDRESS_MODE_CLAMP,           //addressModeU
+                                                              FFX_ADDRESS_MODE_CLAMP,           //addressModeV
+                                                              FFX_ADDRESS_MODE_CLAMP,           //addressModeW
+                                                              FFX_BIND_COMPUTE_SHADER_STAGE,    //stage
+                                                          },
+                                                          //Sampler 4
+                                                          {
+                                                              FFX_FILTER_TYPE_MINMAGMIP_POINT,  //filter
+                                                              FFX_ADDRESS_MODE_BORDER,          //addressModeU
+                                                              FFX_ADDRESS_MODE_BORDER,          //addressModeV
+                                                              FFX_ADDRESS_MODE_BORDER,          //addressModeW
+                                                              FFX_BIND_COMPUTE_SHADER_STAGE     //stage
+                                                          }};
 
     FfxPipelineDescription pipelineDescription{};
     pipelineDescription.contextFlags = 0;
@@ -456,9 +455,9 @@ static FfxErrorCode createPipelineStates(FfxCacaoContext_Private* context)
     pipelineDescription.samplers     = samplers;
 
     // Root constants
-    pipelineDescription.rootConstantBufferCount = 1;
+    pipelineDescription.rootConstantBufferCount       = 1;
     const FfxRootConstantDescription rootConstantDesc = {sizeof(FfxCacaoConstants) / sizeof(uint32_t), FFX_BIND_COMPUTE_SHADER_STAGE};
-    pipelineDescription.rootConstants           = &rootConstantDesc;
+    pipelineDescription.rootConstants                 = &rootConstantDesc;
 
     // Query device capabilities
     FfxDeviceCapabilities capabilities;
@@ -482,104 +481,133 @@ static FfxErrorCode createPipelineStates(FfxCacaoContext_Private* context)
     }
 
     // Set up pipeline descriptors (basically RootSignature and binding)
-    wcscpy_s(pipelineDescription.name, L"CACAO-CLEAR_LOAD_COUNTER");
+    wcscpy(pipelineDescription.name, L"CACAO-CLEAR_LOAD_COUNTER");
     createCacaoPipeline(context, pipelineDescription, &context->pipelineClearLoadCounter, FFX_CACAO_PASS_CLEAR_LOAD_COUNTER, false, canForceWave64);
 
-    wcscpy_s(pipelineDescription.name, L"CACAO-PREPARE_DOWNSAMPLED_DEPTHS");
-    createCacaoPipeline(context, pipelineDescription, &context->pipelinePrepareDownsampledDepths, FFX_CACAO_PASS_PREPARE_DOWNSAMPLED_DEPTHS, false, canForceWave64);
+    wcscpy(pipelineDescription.name, L"CACAO-PREPARE_DOWNSAMPLED_DEPTHS");
+    createCacaoPipeline(
+        context, pipelineDescription, &context->pipelinePrepareDownsampledDepths, FFX_CACAO_PASS_PREPARE_DOWNSAMPLED_DEPTHS, false, canForceWave64);
 
-    wcscpy_s(pipelineDescription.name, L"CACAO-PREPARE_NATIVE_DEPTHS");
+    wcscpy(pipelineDescription.name, L"CACAO-PREPARE_NATIVE_DEPTHS");
     createCacaoPipeline(context, pipelineDescription, &context->pipelinePrepareNativeDepths, FFX_CACAO_PASS_PREPARE_NATIVE_DEPTHS, false, canForceWave64);
 
-    wcscpy_s(pipelineDescription.name, L"CACAO-PREPARE_DOWNSAMPLED_DEPTHS_AND_MIPS");
-    createCacaoPipeline(context, pipelineDescription, &context->pipelinePrepareDownsampledDepthsAndMips, FFX_CACAO_PASS_PREPARE_DOWNSAMPLED_DEPTHS_AND_MIPS, false, canForceWave64);
+    wcscpy(pipelineDescription.name, L"CACAO-PREPARE_DOWNSAMPLED_DEPTHS_AND_MIPS");
+    createCacaoPipeline(context,
+                        pipelineDescription,
+                        &context->pipelinePrepareDownsampledDepthsAndMips,
+                        FFX_CACAO_PASS_PREPARE_DOWNSAMPLED_DEPTHS_AND_MIPS,
+                        false,
+                        canForceWave64);
 
-    createCacaoPipeline(context, pipelineDescription, &context->pipelinePrepareNativeDepthsAndMips, FFX_CACAO_PASS_PREPARE_NATIVE_DEPTHS_AND_MIPS, false, canForceWave64);
-    wcscpy_s(pipelineDescription.name, L"CACAO-PREPARE_NATIVE_DEPTHS_AND_MIPS");
+    createCacaoPipeline(
+        context, pipelineDescription, &context->pipelinePrepareNativeDepthsAndMips, FFX_CACAO_PASS_PREPARE_NATIVE_DEPTHS_AND_MIPS, false, canForceWave64);
+    wcscpy(pipelineDescription.name, L"CACAO-PREPARE_NATIVE_DEPTHS_AND_MIPS");
 
-    wcscpy_s(pipelineDescription.name, L"CACAO-PREPARE_DOWNSAMPLED_DEPTHS_HALF");
-    createCacaoPipeline(context, pipelineDescription, &context->pipelinePrepareDownsampledDepthsHalf, FFX_CACAO_PASS_PREPARE_DOWNSAMPLED_DEPTHS_HALF, supportedFP16, canForceWave64);
+    wcscpy(pipelineDescription.name, L"CACAO-PREPARE_DOWNSAMPLED_DEPTHS_HALF");
+    createCacaoPipeline(context,
+                        pipelineDescription,
+                        &context->pipelinePrepareDownsampledDepthsHalf,
+                        FFX_CACAO_PASS_PREPARE_DOWNSAMPLED_DEPTHS_HALF,
+                        supportedFP16,
+                        canForceWave64);
 
-    wcscpy_s(pipelineDescription.name, L"CACAO-PREPARE_NATIVE_DEPTHS_HALF");
-    createCacaoPipeline(context, pipelineDescription,  &context->pipelinePrepareNativeDepthsHalf, FFX_CACAO_PASS_PREPARE_NATIVE_DEPTHS_HALF, supportedFP16, canForceWave64);
+    wcscpy(pipelineDescription.name, L"CACAO-PREPARE_NATIVE_DEPTHS_HALF");
+    createCacaoPipeline(
+        context, pipelineDescription, &context->pipelinePrepareNativeDepthsHalf, FFX_CACAO_PASS_PREPARE_NATIVE_DEPTHS_HALF, supportedFP16, canForceWave64);
 
-    wcscpy_s(pipelineDescription.name, L"CACAO-PREPARE_DOWNSAMPLED_NORMALS");
-    createCacaoPipeline(context, pipelineDescription, &context->pipelinePrepareDownsampledNormals, FFX_CACAO_PASS_PREPARE_DOWNSAMPLED_NORMALS, false, canForceWave64);
+    wcscpy(pipelineDescription.name, L"CACAO-PREPARE_DOWNSAMPLED_NORMALS");
+    createCacaoPipeline(
+        context, pipelineDescription, &context->pipelinePrepareDownsampledNormals, FFX_CACAO_PASS_PREPARE_DOWNSAMPLED_NORMALS, false, canForceWave64);
 
-    wcscpy_s(pipelineDescription.name, L"CACAO-PREPARE_NATIVE_NORMALS");
+    wcscpy(pipelineDescription.name, L"CACAO-PREPARE_NATIVE_NORMALS");
     createCacaoPipeline(context, pipelineDescription, &context->pipelinePrepareNativeNormals, FFX_CACAO_PASS_PREPARE_NATIVE_NORMALS, false, canForceWave64);
 
-    wcscpy_s(pipelineDescription.name, L"CACAO-PREPARE_DOWNSAMPLED_NORMALS_FROM_INPUT_NORMALS");
-    createCacaoPipeline(context, pipelineDescription, &context->pipelinePrepareDownsampledNormalsFromInputNormals, FFX_CACAO_PASS_PREPARE_DOWNSAMPLED_NORMALS_FROM_INPUT_NORMALS, false, canForceWave64);
+    wcscpy(pipelineDescription.name, L"CACAO-PREPARE_DOWNSAMPLED_NORMALS_FROM_INPUT_NORMALS");
+    createCacaoPipeline(context,
+                        pipelineDescription,
+                        &context->pipelinePrepareDownsampledNormalsFromInputNormals,
+                        FFX_CACAO_PASS_PREPARE_DOWNSAMPLED_NORMALS_FROM_INPUT_NORMALS,
+                        false,
+                        canForceWave64);
 
-    wcscpy_s(pipelineDescription.name, L"CACAO-PREPARE_NATIVE_NORMALS_FROM_INPUT_NORMALS");
-    createCacaoPipeline(context, pipelineDescription, &context->pipelinePrepareNativeNormalsFromInputNormals, FFX_CACAO_PASS_PREPARE_NATIVE_NORMALS_FROM_INPUT_NORMALS, false, canForceWave64);
+    wcscpy(pipelineDescription.name, L"CACAO-PREPARE_NATIVE_NORMALS_FROM_INPUT_NORMALS");
+    createCacaoPipeline(context,
+                        pipelineDescription,
+                        &context->pipelinePrepareNativeNormalsFromInputNormals,
+                        FFX_CACAO_PASS_PREPARE_NATIVE_NORMALS_FROM_INPUT_NORMALS,
+                        false,
+                        canForceWave64);
 
-    wcscpy_s(pipelineDescription.name, L"CACAO-GENERATE_Q0");
+    wcscpy(pipelineDescription.name, L"CACAO-GENERATE_Q0");
     createCacaoPipeline(context, pipelineDescription, &context->pipelineGenerateQ[0], FFX_CACAO_PASS_GENERATE_Q0, false, canForceWave64);
-    
-    wcscpy_s(pipelineDescription.name, L"CACAO-GENERATE_Q1");
+
+    wcscpy(pipelineDescription.name, L"CACAO-GENERATE_Q1");
     createCacaoPipeline(context, pipelineDescription, &context->pipelineGenerateQ[1], FFX_CACAO_PASS_GENERATE_Q1, false, canForceWave64);
 
-    wcscpy_s(pipelineDescription.name, L"CACAO-GENERATE_Q2");
+    wcscpy(pipelineDescription.name, L"CACAO-GENERATE_Q2");
     createCacaoPipeline(context, pipelineDescription, &context->pipelineGenerateQ[2], FFX_CACAO_PASS_GENERATE_Q2, false, canForceWave64);
 
-    wcscpy_s(pipelineDescription.name, L"CACAO-GENERATE_Q3");
+    wcscpy(pipelineDescription.name, L"CACAO-GENERATE_Q3");
     createCacaoPipeline(context, pipelineDescription, &context->pipelineGenerateQ[3], FFX_CACAO_PASS_GENERATE_Q3, false, canForceWave64);
 
-    wcscpy_s(pipelineDescription.name, L"CACAO-GENERATE_Q3_BASE");
+    wcscpy(pipelineDescription.name, L"CACAO-GENERATE_Q3_BASE");
     createCacaoPipeline(context, pipelineDescription, &context->pipelineGenerateQ[4], FFX_CACAO_PASS_GENERATE_Q3_BASE, false, canForceWave64);
-    
-    wcscpy_s(pipelineDescription.name, L"CACAO-GENERATE_IMPORTANCE_MAP");
+
+    wcscpy(pipelineDescription.name, L"CACAO-GENERATE_IMPORTANCE_MAP");
     createCacaoPipeline(context, pipelineDescription, &context->pipelineGenerateImportanceMap, FFX_CACAO_PASS_GENERATE_IMPORTANCE_MAP, false, canForceWave64);
 
-    wcscpy_s(pipelineDescription.name, L"CACAO-POST_PROCESS_IMPORTANCE_MAP_A");
-    createCacaoPipeline(context, pipelineDescription, &context->pipelineProcessImportanceMapA, FFX_CACAO_PASS_POST_PROCESS_IMPORTANCE_MAP_A, false, canForceWave64);
+    wcscpy(pipelineDescription.name, L"CACAO-POST_PROCESS_IMPORTANCE_MAP_A");
+    createCacaoPipeline(
+        context, pipelineDescription, &context->pipelineProcessImportanceMapA, FFX_CACAO_PASS_POST_PROCESS_IMPORTANCE_MAP_A, false, canForceWave64);
 
-    wcscpy_s(pipelineDescription.name, L"CACAO-POST_PROCESS_IMPORTANCE_MAP_B");
-    createCacaoPipeline(context, pipelineDescription, &context->pipelineProcessImportanceMapB, FFX_CACAO_PASS_POST_PROCESS_IMPORTANCE_MAP_B, false, canForceWave64);
+    wcscpy(pipelineDescription.name, L"CACAO-POST_PROCESS_IMPORTANCE_MAP_B");
+    createCacaoPipeline(
+        context, pipelineDescription, &context->pipelineProcessImportanceMapB, FFX_CACAO_PASS_POST_PROCESS_IMPORTANCE_MAP_B, false, canForceWave64);
 
-    wcscpy_s(pipelineDescription.name, L"CACAO-EDGE_SENSITIVE_BLUR_1");
+    wcscpy(pipelineDescription.name, L"CACAO-EDGE_SENSITIVE_BLUR_1");
     createCacaoPipeline(context, pipelineDescription, &context->pipelineEdgeSensitiveBlur[0], FFX_CACAO_PASS_EDGE_SENSITIVE_BLUR_1, false, canForceWave64);
 
-    wcscpy_s(pipelineDescription.name, L"CACAO-EDGE_SENSITIVE_BLUR_2");
+    wcscpy(pipelineDescription.name, L"CACAO-EDGE_SENSITIVE_BLUR_2");
     createCacaoPipeline(context, pipelineDescription, &context->pipelineEdgeSensitiveBlur[1], FFX_CACAO_PASS_EDGE_SENSITIVE_BLUR_2, false, canForceWave64);
 
-    wcscpy_s(pipelineDescription.name, L"CACAO-EDGE_SENSITIVE_BLUR_3");
+    wcscpy(pipelineDescription.name, L"CACAO-EDGE_SENSITIVE_BLUR_3");
     createCacaoPipeline(context, pipelineDescription, &context->pipelineEdgeSensitiveBlur[2], FFX_CACAO_PASS_EDGE_SENSITIVE_BLUR_3, false, canForceWave64);
 
-    wcscpy_s(pipelineDescription.name, L"CACAO-EDGE_SENSITIVE_BLUR_4");
+    wcscpy(pipelineDescription.name, L"CACAO-EDGE_SENSITIVE_BLUR_4");
     createCacaoPipeline(context, pipelineDescription, &context->pipelineEdgeSensitiveBlur[3], FFX_CACAO_PASS_EDGE_SENSITIVE_BLUR_4, false, canForceWave64);
 
-    wcscpy_s(pipelineDescription.name, L"CACAO-EDGE_SENSITIVE_BLUR_5");
+    wcscpy(pipelineDescription.name, L"CACAO-EDGE_SENSITIVE_BLUR_5");
     createCacaoPipeline(context, pipelineDescription, &context->pipelineEdgeSensitiveBlur[4], FFX_CACAO_PASS_EDGE_SENSITIVE_BLUR_5, false, canForceWave64);
 
-    wcscpy_s(pipelineDescription.name, L"CACAO-EDGE_SENSITIVE_BLUR_6");
+    wcscpy(pipelineDescription.name, L"CACAO-EDGE_SENSITIVE_BLUR_6");
     createCacaoPipeline(context, pipelineDescription, &context->pipelineEdgeSensitiveBlur[5], FFX_CACAO_PASS_EDGE_SENSITIVE_BLUR_6, false, canForceWave64);
 
-    wcscpy_s(pipelineDescription.name, L"CACAO-EDGE_SENSITIVE_BLUR_7");
+    wcscpy(pipelineDescription.name, L"CACAO-EDGE_SENSITIVE_BLUR_7");
     createCacaoPipeline(context, pipelineDescription, &context->pipelineEdgeSensitiveBlur[6], FFX_CACAO_PASS_EDGE_SENSITIVE_BLUR_7, false, canForceWave64);
 
-    wcscpy_s(pipelineDescription.name, L"CACAO-EDGE_SENSITIVE_BLUR_8");
+    wcscpy(pipelineDescription.name, L"CACAO-EDGE_SENSITIVE_BLUR_8");
     createCacaoPipeline(context, pipelineDescription, &context->pipelineEdgeSensitiveBlur[7], FFX_CACAO_PASS_EDGE_SENSITIVE_BLUR_8, false, canForceWave64);
 
-    wcscpy_s(pipelineDescription.name, L"CACAO-APPLY_NON_SMART_HALF");
+    wcscpy(pipelineDescription.name, L"CACAO-APPLY_NON_SMART_HALF");
     createCacaoPipeline(context, pipelineDescription, &context->pipelineApplyNonSmartHalf, FFX_CACAO_PASS_APPLY_NON_SMART_HALF, supportedFP16, canForceWave64);
 
-    wcscpy_s(pipelineDescription.name, L"CACAO-APPLY_NON_SMART");
+    wcscpy(pipelineDescription.name, L"CACAO-APPLY_NON_SMART");
     createCacaoPipeline(context, pipelineDescription, &context->pipelineApplyNonSmart, FFX_CACAO_PASS_APPLY_NON_SMART, false, canForceWave64);
 
-    wcscpy_s(pipelineDescription.name, L"CACAO-APPLY");
+    wcscpy(pipelineDescription.name, L"CACAO-APPLY");
     createCacaoPipeline(context, pipelineDescription, &context->pipelineApply, FFX_CACAO_PASS_APPLY, false, canForceWave64);
 
-    wcscpy_s(pipelineDescription.name, L"CACAO-UPSCALE_BILATERAL_5X5_HALF");
-    createCacaoPipeline(context, pipelineDescription, &context->pipelineUpscaleBilateral5x5Half, FFX_CACAO_PASS_UPSCALE_BILATERAL_5X5, supportedFP16, canForceWave64);
+    wcscpy(pipelineDescription.name, L"CACAO-UPSCALE_BILATERAL_5X5_HALF");
+    createCacaoPipeline(
+        context, pipelineDescription, &context->pipelineUpscaleBilateral5x5Half, FFX_CACAO_PASS_UPSCALE_BILATERAL_5X5, supportedFP16, canForceWave64);
 
-    wcscpy_s(pipelineDescription.name, L"CACAO-UPSCALE_BILATERAL_5X5_NON_SMART");
-    createCacaoPipeline(context, pipelineDescription, &context->pipelineUpscaleBilateral5x5NonSmart, FFX_CACAO_PASS_UPSCALE_BILATERAL_5X5, false, canForceWave64);
+    wcscpy(pipelineDescription.name, L"CACAO-UPSCALE_BILATERAL_5X5_NON_SMART");
+    createCacaoPipeline(
+        context, pipelineDescription, &context->pipelineUpscaleBilateral5x5NonSmart, FFX_CACAO_PASS_UPSCALE_BILATERAL_5X5, false, canForceWave64);
 
-    wcscpy_s(pipelineDescription.name, L"CACAO-UPSCALE_BILATERAL_5X5_SMART");
-    createCacaoPipeline(context, pipelineDescription, &context->pipelineUpscaleBilateral5x5Smart, FFX_CACAO_PASS_UPSCALE_BILATERAL_5X5, false, canForceWave64, true);
+    wcscpy(pipelineDescription.name, L"CACAO-UPSCALE_BILATERAL_5X5_SMART");
+    createCacaoPipeline(
+        context, pipelineDescription, &context->pipelineUpscaleBilateral5x5Smart, FFX_CACAO_PASS_UPSCALE_BILATERAL_5X5, false, canForceWave64, true);
 
     return FFX_OK;
 }
@@ -606,12 +634,12 @@ static FfxErrorCode cacaoCreate(FfxCacaoContext_Private* context, const FfxCacao
     // Check version info - make sure we are linked with the right backend version
     FfxVersionNumber version = context->contextDescription.backendInterface.fpGetSDKVersion(&context->contextDescription.backendInterface);
     FFX_RETURN_ON_ERROR(version == FFX_SDK_MAKE_VERSION(1, 1, 4), FFX_ERROR_INVALID_VERSION);
-    
+
     context->constantBuffer.num32BitEntries = sizeof(FfxCacaoConstants) / sizeof(uint32_t);
 
     // Create the device
-    FfxErrorCode errorCode =
-        context->contextDescription.backendInterface.fpCreateBackendContext(&context->contextDescription.backendInterface, FFX_EFFECT_CACAO, nullptr, &context->effectContextId);
+    FfxErrorCode errorCode = context->contextDescription.backendInterface.fpCreateBackendContext(
+        &context->contextDescription.backendInterface, FFX_EFFECT_CACAO, nullptr, &context->effectContextId);
     FFX_RETURN_ON_ERROR(errorCode == FFX_OK, errorCode);
 
 #ifdef FFX_CACAO_ENABLE_PROFILING
@@ -622,7 +650,7 @@ static FfxErrorCode cacaoCreate(FfxCacaoContext_Private* context, const FfxCacao
     }
 #endif
 
-    context->useDownsampledSsao   = contextDescription->useDownsampledSsao;
+    context->useDownsampledSsao = contextDescription->useDownsampledSsao;
 
     FfxCacaoBufferSizeInfo* bsi = &context->bufferSizeInfo;
     ffxCacaoUpdateBufferSizeInfo(contextDescription->width, contextDescription->height, context->useDownsampledSsao, bsi);
@@ -699,12 +727,12 @@ static FfxErrorCode cacaoCreate(FfxCacaoContext_Private* context, const FfxCacao
     };
 
     const uint32_t surfaceDepths[] = {
-        4, //CACAO_DeInterleaved_Depths
-        4, //CACAO_DeInterleaved_Normals
-        4, //CACAO_Ssao_Buffer_Ping
-        4, //CACAO_Ssao_Buffer_Pong
-        1, //CACAO_Importance_Map
-        1, //CACAO_Importance_Map_Pong
+        4,  //CACAO_DeInterleaved_Depths
+        4,  //CACAO_DeInterleaved_Normals
+        4,  //CACAO_Ssao_Buffer_Ping
+        4,  //CACAO_Ssao_Buffer_Pong
+        1,  //CACAO_Importance_Map
+        1,  //CACAO_Importance_Map_Pong
     };
 
     // clear the textures to NULL.
@@ -723,7 +751,8 @@ static FfxErrorCode cacaoCreate(FfxCacaoContext_Private* context, const FfxCacao
                                                                     FFX_RESOURCE_FLAGS_NONE,
                                                                     {FFX_RESOURCE_INIT_DATA_TYPE_UNINITIALIZED}};
 
-        const FfxResourceDescription resourceDescription = {FFX_RESOURCE_TYPE_TEXTURE1D, FFX_SURFACE_FORMAT_R32_UINT, 1, 1, 1, 1, FFX_RESOURCE_FLAGS_NONE, internalSurfaceDesc.usage};
+        const FfxResourceDescription resourceDescription = {
+            FFX_RESOURCE_TYPE_TEXTURE1D, FFX_SURFACE_FORMAT_R32_UINT, 1, 1, 1, 1, FFX_RESOURCE_FLAGS_NONE, internalSurfaceDesc.usage};
         const FfxCreateResourceDescription createResourceDescription = {FFX_HEAP_TYPE_DEFAULT,
                                                                         resourceDescription,
                                                                         FFX_RESOURCE_STATE_UNORDERED_ACCESS,
@@ -830,12 +859,16 @@ static FfxErrorCode cacaoRelease(FfxCacaoContext_Private* context)
     return FFX_OK;
 }
 
-static void scheduleDispatch(
-    FfxCacaoContext_Private* context, const FfxPipelineState* pipeline, const uint32_t dispatchX, const uint32_t dispatchY, const uint32_t dispatchZ, const uint32_t flags = 0)
+static void scheduleDispatch(FfxCacaoContext_Private* context,
+                             const FfxPipelineState*  pipeline,
+                             const uint32_t           dispatchX,
+                             const uint32_t           dispatchY,
+                             const uint32_t           dispatchZ,
+                             const uint32_t           flags = 0)
 {
     FfxGpuJobDescription dispatchJob = {FFX_GPU_JOB_COMPUTE};
-    wcscpy_s(dispatchJob.jobLabel, pipeline->name);
-    const size_t size                      = sizeof(dispatchJob);
+    wcscpy(dispatchJob.jobLabel, pipeline->name);
+    const size_t size = sizeof(dispatchJob);
 
     for (uint32_t currentShaderResourceViewIndex = 0; currentShaderResourceViewIndex < pipeline->srvTextureCount; ++currentShaderResourceViewIndex)
     {
@@ -849,8 +882,8 @@ static void scheduleDispatch(
 
         dispatchJob.computeJobDescriptor.srvTextures[currentShaderResourceViewIndex].resource = currentResource;
 #ifdef FFX_DEBUG
-        wcscpy_s(dispatchJob.computeJobDescriptor.srvTextures[currentShaderResourceViewIndex].name,
-                 pipeline->srvTextureBindings[currentShaderResourceViewIndex].name);
+        wcscpy(dispatchJob.computeJobDescriptor.srvTextures[currentShaderResourceViewIndex].name,
+               pipeline->srvTextureBindings[currentShaderResourceViewIndex].name);
 #endif
     }
 
@@ -860,15 +893,16 @@ static void scheduleDispatch(
         uint32_t       bindEntry         = pipeline->uavTextureBindings[currentUnorderedAccessViewIndex].arrayIndex;
         const uint32_t currentResourceId = pipeline->uavTextureBindings[currentUnorderedAccessViewIndex].resourceIdentifier;
 #ifdef FFX_DEBUG
-        wcscpy_s(dispatchJob.computeJobDescriptor.uavTextures[currentUnorderedAccessViewIndex].name,
-                 pipeline->uavTextureBindings[currentUnorderedAccessViewIndex].name);
+        wcscpy(dispatchJob.computeJobDescriptor.uavTextures[currentUnorderedAccessViewIndex].name,
+               pipeline->uavTextureBindings[currentUnorderedAccessViewIndex].name);
 #endif
         if (currentResourceId == FFX_CACAO_RESOURCE_IDENTIFIER_DOWNSAMPLED_DEPTH_MIPMAP_0)
         {
             const FfxResourceInternal currentResource = context->textures[FFX_CACAO_RESOURCE_IDENTIFIER_DEINTERLEAVED_DEPTHS];
 
             // Don't over-subscribe mips (default to mip 0 once we've exhausted min mip)
-            const FfxResourceDescription resDesc = context->contextDescription.backendInterface.fpGetResourceDescription(&context->contextDescription.backendInterface, currentResource);
+            const FfxResourceDescription resDesc =
+                context->contextDescription.backendInterface.fpGetResourceDescription(&context->contextDescription.backendInterface, currentResource);
             dispatchJob.computeJobDescriptor.uavTextures[uavEntry].resource = currentResource;
             dispatchJob.computeJobDescriptor.uavTextures[uavEntry++].mip    = (bindEntry < resDesc.mipCount) ? bindEntry : 0;
         }
@@ -881,7 +915,7 @@ static void scheduleDispatch(
             }
 
             dispatchJob.computeJobDescriptor.uavTextures[uavEntry].resource = currentResource;
-            dispatchJob.computeJobDescriptor.uavTextures[uavEntry++].mip = 0;
+            dispatchJob.computeJobDescriptor.uavTextures[uavEntry++].mip    = 0;
         }
     }
 
@@ -891,7 +925,7 @@ static void scheduleDispatch(
     dispatchJob.computeJobDescriptor.pipeline      = *pipeline;
 
 #ifdef FFX_DEBUG
-    wcscpy_s(dispatchJob.computeJobDescriptor.cbNames[0], pipeline->constantBufferBindings[0].name);
+    wcscpy(dispatchJob.computeJobDescriptor.cbNames[0], pipeline->constantBufferBindings[0].name);
 #endif
     dispatchJob.computeJobDescriptor.cbs[0] = context->constantBuffer;
 
@@ -937,9 +971,9 @@ static FfxErrorCode cacaoDispatch(FfxCacaoContext_Private* context,
 
     // clear load counter
     {
-        FfxGpuJobDescription clearJob      = {FFX_GPU_JOB_CLEAR_FLOAT};
-        wcscpy_s(clearJob.jobLabel, L"Clear Load Counter");
-        uint32_t             clearValues[] = {0, 0, 0, 0};
+        FfxGpuJobDescription clearJob = {FFX_GPU_JOB_CLEAR_FLOAT};
+        wcscpy(clearJob.jobLabel, L"Clear Load Counter");
+        uint32_t clearValues[] = {0, 0, 0, 0};
         memcpy(clearJob.clearJobDescriptor.color, clearValues, sizeof(uint32_t) * FFX_CACAO_ARRAY_SIZE(clearJob.clearJobDescriptor.color));
         clearJob.clearJobDescriptor.target = context->textures[FFX_CACAO_RESOURCE_IDENTIFIER_LOAD_COUNTER_BUFFER];
         context->contextDescription.backendInterface.fpScheduleGpuJob(&context->contextDescription.backendInterface, &clearJob);
@@ -947,10 +981,10 @@ static FfxErrorCode cacaoDispatch(FfxCacaoContext_Private* context,
     context->contextDescription.backendInterface.fpExecuteGpuJobs(&context->contextDescription.backendInterface, commandList, context->effectContextId);
     // upload constant buffers
     ffxCacaoUpdateConstants(&context->constants, &context->settings, bsi, proj, normalsToView, normalUnPackMul, normalUnPackAdd);
-    
+
     context->contextDescription.backendInterface.fpStageConstantBufferDataFunc(
         &context->contextDescription.backendInterface, &context->constants, sizeof(FfxCacaoConstants), &context->constantBuffer);
-    
+
     // prepare depths, normals and mips
     {
         USER_MARKER("Prepare downsampled depths, normals and mips");
@@ -963,20 +997,16 @@ static FfxErrorCode cacaoDispatch(FfxCacaoContext_Private* context,
             const uint32_t         dispatchHeight = dispatchSize(FFX_CACAO_PREPARE_DEPTHS_HALF_HEIGHT, bsi->deinterleavedDepthBufferHeight);
             const FfxPipelineState prepareDepthsHalf =
                 context->useDownsampledSsao ? context->pipelinePrepareDownsampledDepthsHalf : context->pipelinePrepareNativeDepthsHalf;
-            scheduleDispatch(
-                context, &prepareDepthsHalf, dispatchWidth, dispatchHeight, 1);
+            scheduleDispatch(context, &prepareDepthsHalf, dispatchWidth, dispatchHeight, 1);
             break;
         }
         case FFX_CACAO_QUALITY_LOW:
         {
             const uint32_t         dispatchWidth  = dispatchSize(FFX_CACAO_PREPARE_DEPTHS_WIDTH, bsi->deinterleavedDepthBufferWidth);
             const uint32_t         dispatchHeight = dispatchSize(FFX_CACAO_PREPARE_DEPTHS_HEIGHT, bsi->deinterleavedDepthBufferHeight);
-            const FfxPipelineState prepareDepths  = context->useDownsampledSsao ? context->pipelinePrepareDownsampledDepths : context->pipelinePrepareNativeDepths;
-            scheduleDispatch(context,
-                             &prepareDepths,
-                             dispatchWidth,
-                             dispatchHeight,
-                             1);
+            const FfxPipelineState prepareDepths =
+                context->useDownsampledSsao ? context->pipelinePrepareDownsampledDepths : context->pipelinePrepareNativeDepths;
+            scheduleDispatch(context, &prepareDepths, dispatchWidth, dispatchHeight, 1);
             break;
         }
         default:
@@ -985,11 +1015,7 @@ static FfxErrorCode cacaoDispatch(FfxCacaoContext_Private* context,
             const uint32_t         dispatchHeight = dispatchSize(FFX_CACAO_PREPARE_DEPTHS_AND_MIPS_HEIGHT, bsi->deinterleavedDepthBufferHeight);
             const FfxPipelineState prepareDepthsAndMips =
                 context->useDownsampledSsao ? context->pipelinePrepareDownsampledDepthsAndMips : context->pipelinePrepareNativeDepthsAndMips;
-            scheduleDispatch(context,
-                             &prepareDepthsAndMips,
-                             dispatchWidth,
-                             dispatchHeight,
-                             1);
+            scheduleDispatch(context, &prepareDepthsAndMips, dispatchWidth, dispatchHeight, 1);
             break;
         }
         }
@@ -998,24 +1024,17 @@ static FfxErrorCode cacaoDispatch(FfxCacaoContext_Private* context,
         {
             const uint32_t         dispatchWidth  = dispatchSize(FFX_CACAO_PREPARE_NORMALS_WIDTH, bsi->ssaoBufferWidth);
             const uint32_t         dispatchHeight = dispatchSize(FFX_CACAO_PREPARE_NORMALS_HEIGHT, bsi->ssaoBufferHeight);
-            const FfxPipelineState prepareNormals = context->useDownsampledSsao ? context->pipelinePrepareDownsampledNormals : context->pipelinePrepareNativeNormals;
-            scheduleDispatch(context,
-                             &prepareNormals,
-                             dispatchWidth,
-                             dispatchHeight,
-                             1);
+            const FfxPipelineState prepareNormals =
+                context->useDownsampledSsao ? context->pipelinePrepareDownsampledNormals : context->pipelinePrepareNativeNormals;
+            scheduleDispatch(context, &prepareNormals, dispatchWidth, dispatchHeight, 1);
         }
         else
         {
             const uint32_t         dispatchWidth                  = dispatchSize(PREPARE_NORMALS_FROM_INPUT_NORMALS_WIDTH, bsi->ssaoBufferWidth);
             const uint32_t         dispatchHeight                 = dispatchSize(PREPARE_NORMALS_FROM_INPUT_NORMALS_HEIGHT, bsi->ssaoBufferHeight);
             const FfxPipelineState prepareNormalsFromInputNormals = context->useDownsampledSsao ? context->pipelinePrepareDownsampledNormalsFromInputNormals
-                                                                                          : context->pipelinePrepareNativeNormalsFromInputNormals;
-            scheduleDispatch(context,
-                             &prepareNormalsFromInputNormals,
-                             dispatchWidth,
-                             dispatchHeight,
-                             1);
+                                                                                                : context->pipelinePrepareNativeNormalsFromInputNormals;
+            scheduleDispatch(context, &prepareNormalsFromInputNormals, dispatchWidth, dispatchHeight, 1);
         }
 
         GET_TIMESTAMP(PREPARE);
@@ -1031,12 +1050,7 @@ static FfxErrorCode cacaoDispatch(FfxCacaoContext_Private* context,
 
             const uint32_t dispatchWidth  = dispatchSize(FFX_CACAO_GENERATE_WIDTH, bsi->ssaoBufferWidth);
             const uint32_t dispatchHeight = dispatchSize(FFX_CACAO_GENERATE_HEIGHT, bsi->ssaoBufferHeight);
-            scheduleDispatch(context,
-                             &context->pipelineGenerateQ[4],
-                             dispatchWidth,
-                             dispatchHeight,
-                             4,
-                             FFX_CACAO_UAV_SSAO_REMAP_TO_PONG);
+            scheduleDispatch(context, &context->pipelineGenerateQ[4], dispatchWidth, dispatchHeight, 4, FFX_CACAO_UAV_SSAO_REMAP_TO_PONG);
             GET_TIMESTAMP(BASE_SSAO_PASS);
         }
 
@@ -1047,21 +1061,9 @@ static FfxErrorCode cacaoDispatch(FfxCacaoContext_Private* context,
             const uint32_t dispatchWidth  = dispatchSize(IMPORTANCE_MAP_WIDTH, bsi->importanceMapWidth);
             const uint32_t dispatchHeight = dispatchSize(IMPORTANCE_MAP_HEIGHT, bsi->importanceMapHeight);
 
-            scheduleDispatch(context,
-                             &context->pipelineGenerateImportanceMap,
-                             dispatchWidth,
-                             dispatchHeight,
-                             1);
-            scheduleDispatch(context,
-                             &context->pipelineProcessImportanceMapA,
-                             dispatchWidth,
-                             dispatchHeight,
-                             1);
-            scheduleDispatch(context,
-                             &context->pipelineProcessImportanceMapB,
-                             dispatchWidth,
-                             dispatchHeight,
-                             1);
+            scheduleDispatch(context, &context->pipelineGenerateImportanceMap, dispatchWidth, dispatchHeight, 1);
+            scheduleDispatch(context, &context->pipelineProcessImportanceMapA, dispatchWidth, dispatchHeight, 1);
+            scheduleDispatch(context, &context->pipelineProcessImportanceMapB, dispatchWidth, dispatchHeight, 1);
 
             GET_TIMESTAMP(IMPORTANCE_MAP);
         }
@@ -1073,7 +1075,7 @@ static FfxErrorCode cacaoDispatch(FfxCacaoContext_Private* context,
         USER_MARKER("Generate SSAO");
 
         const uint32_t generate = FFX_CACAO_MAX(0, context->settings.qualityLevel - 1);
-        uint32_t dispatchWidth, dispatchHeight, dispatchDepth;
+        uint32_t       dispatchWidth, dispatchHeight, dispatchDepth;
 
         switch (context->settings.qualityLevel)
         {
@@ -1097,11 +1099,7 @@ static FfxErrorCode cacaoDispatch(FfxCacaoContext_Private* context,
 
         dispatchDepth *= (context->settings.qualityLevel == FFX_CACAO_QUALITY_LOWEST) ? 2 : 4;  // 2 layers for lowest, 4 for all others
 
-        scheduleDispatch(context,
-                         &context->pipelineGenerateQ[generate],
-                         dispatchWidth,
-                         dispatchHeight,
-                         dispatchDepth);
+        scheduleDispatch(context, &context->pipelineGenerateQ[generate], dispatchWidth, dispatchHeight, dispatchDepth);
 
         GET_TIMESTAMP(GENERATE_SSAO);
     }
@@ -1117,11 +1115,7 @@ static FfxErrorCode cacaoDispatch(FfxCacaoContext_Private* context,
         const uint32_t dispatchHeight    = dispatchSize(h, bsi->ssaoBufferHeight);
         const uint32_t dispatchDepth     = context->settings.qualityLevel == FFX_CACAO_QUALITY_LOWEST ? 2 : 4;
         const uint32_t edgeSensitiveBlur = blurPassCount - 1;
-        scheduleDispatch(context,
-                         &context->pipelineEdgeSensitiveBlur[edgeSensitiveBlur],
-                         dispatchWidth,
-                         dispatchHeight,
-                         dispatchDepth);
+        scheduleDispatch(context, &context->pipelineEdgeSensitiveBlur[edgeSensitiveBlur], dispatchWidth, dispatchHeight, dispatchDepth);
 
         GET_TIMESTAMP(EDGE_SENSITIVE_BLUR);
     }
@@ -1265,7 +1259,7 @@ FfxErrorCode ffxCacaoUpdateSettings(FfxCacaoContext* context, const FfxCacaoSett
 {
     FFX_RETURN_ON_ERROR(context, FFX_ERROR_INVALID_POINTER);
     FFX_RETURN_ON_ERROR(settings, FFX_ERROR_INVALID_POINTER);
-    
+
     FfxCacaoContext_Private* contextPrivate = (FfxCacaoContext_Private*)(context);
     contextPrivate->useDownsampledSsao      = useDownsampledSsao;
     memcpy(&contextPrivate->settings, settings, sizeof(*settings));

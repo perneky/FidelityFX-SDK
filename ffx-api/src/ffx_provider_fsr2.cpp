@@ -1,7 +1,7 @@
 // This file is part of the FidelityFX SDK.
 //
 // Copyright (C) 2024 Advanced Micro Devices, Inc.
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files(the "Software"), to deal
 // in the Software without restriction, including without limitation the rights
@@ -72,14 +72,14 @@ bool ffxProvider_FSR2::CanProvide(uint64_t type) const
     return (type & FFX_API_EFFECT_MASK) == FFX_API_EFFECT_ID_UPSCALE;
 }
 
-#define STRINGIFY_(X) #X
-#define STRINGIFY(X) STRINGIFY_(X) 
+#define STRINGIFY_(X)                            #X
+#define STRINGIFY(X)                             STRINGIFY_(X)
 #define MAKE_VERSION_STRING(major, minor, patch) STRINGIFY major "." STRINGIFY minor "." STRINGIFY patch
 
 uint64_t ffxProvider_FSR2::GetId() const
 {
     // FSR Scale, version from header
-    return 0xF5A5'CA1Eui64 << 32 | (FFX_SDK_MAKE_VERSION(FFX_FSR2_VERSION_MAJOR, FFX_FSR2_VERSION_MINOR, FFX_FSR2_VERSION_PATCH) & 0xFFFF'FFFF);
+    return 0xF5A5'CA1EULL << 32 | (FFX_SDK_MAKE_VERSION(FFX_FSR2_VERSION_MAJOR, FFX_FSR2_VERSION_MINOR, FFX_FSR2_VERSION_PATCH) & 0xFFFF'FFFF);
 }
 
 const char* ffxProvider_FSR2::GetVersionName() const
@@ -90,10 +90,10 @@ const char* ffxProvider_FSR2::GetVersionName() const
 struct InternalFsr2Context
 {
     InternalContextHeader header;
-    FfxInterface backendInterface;
-    FfxFsr2Context context;
-    ffxApiMessage fpMessage;
-    uint32_t debugLevel;
+    FfxInterface          backendInterface;
+    FfxFsr2Context        context;
+    ffxApiMessage         fpMessage;
+    uint32_t              debugLevel;
 };
 
 ffxReturnCode_t ffxProvider_FSR2::CreateContext(ffxContext* context, ffxCreateContextDescHeader* header, Allocator& alloc) const
@@ -117,14 +117,14 @@ ffxReturnCode_t ffxProvider_FSR2::CreateContext(ffxContext* context, ffxCreateCo
         initializationParameters.displaySize.height        = desc->maxUpscaleSize.height;
         initializationParameters.flags                     = ConvertFlags(desc->flags);
         // Calling this casted function is undefined behaviour, but it's probably safe.
-        initializationParameters.fpMessage                 = reinterpret_cast<FfxFsr2Message>(desc->fpMessage);
+        initializationParameters.fpMessage = reinterpret_cast<FfxFsr2Message>(desc->fpMessage);
 
         // Grab this fp for use in extensions later
         internal_context->fpMessage = desc->fpMessage;
 
         // Create the FSR2 context
         TRY(ffxFsr2ContextCreate(&internal_context->context, &initializationParameters));
-        
+
         ffxFsr2SetGlobalDebugMessage(reinterpret_cast<ffxMessageCallback>(desc->fpMessage), 0);
 
         *context = internal_context;
@@ -159,14 +159,14 @@ ffxReturnCode_t ffxProvider_FSR2::Configure(ffxContext* context, const ffxConfig
     InternalFsr2Context* internal_context = reinterpret_cast<InternalFsr2Context*>(*context);
     switch (header->type)
     {
-        case FFX_API_CONFIGURE_DESC_TYPE_GLOBALDEBUG1:
-        {
-            auto desc = reinterpret_cast<const ffxConfigureDescGlobalDebug1*>(header);
-            TRY2(ffxFsr2SetGlobalDebugMessage( reinterpret_cast<ffxMessageCallback>(desc->fpMessage), desc->debugLevel));
-            internal_context->fpMessage = desc->fpMessage;
-            internal_context->debugLevel = desc->debugLevel;
-        }
-        break;
+    case FFX_API_CONFIGURE_DESC_TYPE_GLOBALDEBUG1:
+    {
+        auto desc = reinterpret_cast<const ffxConfigureDescGlobalDebug1*>(header);
+        TRY2(ffxFsr2SetGlobalDebugMessage(reinterpret_cast<ffxMessageCallback>(desc->fpMessage), desc->debugLevel));
+        internal_context->fpMessage  = desc->fpMessage;
+        internal_context->debugLevel = desc->debugLevel;
+    }
+    break;
     }
     return FFX_API_RETURN_OK;
 }
@@ -179,7 +179,7 @@ ffxReturnCode_t ffxProvider_FSR2::Query(ffxContext* context, ffxQueryDescHeader*
     {
     case FFX_API_QUERY_DESC_TYPE_UPSCALE_GETJITTEROFFSET:
     {
-        auto desc = reinterpret_cast<ffxQueryDescUpscaleGetJitterOffset*>(header);
+        auto  desc = reinterpret_cast<ffxQueryDescUpscaleGetJitterOffset*>(header);
         float jitterX, jitterY;
         TRY2(ffxFsr2GetJitterOffset(&jitterX, &jitterY, desc->index, desc->phaseCount));
         if (desc->pOutX != nullptr)
@@ -194,7 +194,7 @@ ffxReturnCode_t ffxProvider_FSR2::Query(ffxContext* context, ffxQueryDescHeader*
     }
     case FFX_API_QUERY_DESC_TYPE_UPSCALE_GETJITTERPHASECOUNT:
     {
-        auto desc = reinterpret_cast<ffxQueryDescUpscaleGetJitterPhaseCount*>(header);
+        auto          desc             = reinterpret_cast<ffxQueryDescUpscaleGetJitterPhaseCount*>(header);
         const int32_t jitterPhaseCount = ffxFsr2GetJitterPhaseCount(desc->renderWidth, desc->displayWidth);
 
         if (desc->pOutPhaseCount != nullptr)
@@ -205,11 +205,12 @@ ffxReturnCode_t ffxProvider_FSR2::Query(ffxContext* context, ffxQueryDescHeader*
     }
     case FFX_API_QUERY_DESC_TYPE_UPSCALE_GETRENDERRESOLUTIONFROMQUALITYMODE:
     {
-        auto desc = reinterpret_cast<ffxQueryDescUpscaleGetRenderResolutionFromQualityMode*>(header);
+        auto     desc = reinterpret_cast<ffxQueryDescUpscaleGetRenderResolutionFromQualityMode*>(header);
         uint32_t renderWidth;
         uint32_t renderHeight;
 
-        TRY2(ffxFsr2GetRenderResolutionFromQualityMode(&renderWidth, &renderHeight, desc->displayWidth, desc->displayHeight, ConvertQuality(desc->qualityMode)));
+        TRY2(
+            ffxFsr2GetRenderResolutionFromQualityMode(&renderWidth, &renderHeight, desc->displayWidth, desc->displayHeight, ConvertQuality(desc->qualityMode)));
         if (desc->pOutRenderWidth != nullptr)
         {
             *desc->pOutRenderWidth = renderWidth;
@@ -222,7 +223,7 @@ ffxReturnCode_t ffxProvider_FSR2::Query(ffxContext* context, ffxQueryDescHeader*
     }
     case FFX_API_QUERY_DESC_TYPE_UPSCALE_GETUPSCALERATIOFROMQUALITYMODE:
     {
-        auto desc = reinterpret_cast<ffxQueryDescUpscaleGetUpscaleRatioFromQualityMode*>(header);
+        auto  desc  = reinterpret_cast<ffxQueryDescUpscaleGetUpscaleRatioFromQualityMode*>(header);
         float ratio = ffxFsr2GetUpscaleRatioFromQualityMode(ConvertQuality(desc->qualityMode));
 
         if (desc->pOutUpscaleRatio != nullptr)
@@ -293,16 +294,16 @@ ffxReturnCode_t ffxProvider_FSR2::Dispatch(ffxContext* context, const ffxDispatc
         auto desc = reinterpret_cast<const ffxDispatchDescUpscaleGenerateReactiveMask*>(header);
 
         FfxFsr2GenerateReactiveDescription dispatchParameters = {};
-        dispatchParameters.commandList       = desc->commandList;
-        dispatchParameters.colorOpaqueOnly   = Convert(desc->colorOpaqueOnly);
-        dispatchParameters.colorPreUpscale   = Convert(desc->colorPreUpscale);
-        dispatchParameters.outReactive       = Convert(desc->outReactive);
-        dispatchParameters.renderSize.width  = desc->renderSize.width;
-        dispatchParameters.renderSize.height = desc->renderSize.height;
-        dispatchParameters.scale             = desc->scale;
-        dispatchParameters.cutoffThreshold   = desc->cutoffThreshold;
-        dispatchParameters.binaryValue       = desc->binaryValue;
-        dispatchParameters.flags             = desc->flags;
+        dispatchParameters.commandList                        = desc->commandList;
+        dispatchParameters.colorOpaqueOnly                    = Convert(desc->colorOpaqueOnly);
+        dispatchParameters.colorPreUpscale                    = Convert(desc->colorPreUpscale);
+        dispatchParameters.outReactive                        = Convert(desc->outReactive);
+        dispatchParameters.renderSize.width                   = desc->renderSize.width;
+        dispatchParameters.renderSize.height                  = desc->renderSize.height;
+        dispatchParameters.scale                              = desc->scale;
+        dispatchParameters.cutoffThreshold                    = desc->cutoffThreshold;
+        dispatchParameters.binaryValue                        = desc->binaryValue;
+        dispatchParameters.flags                              = desc->flags;
 
         TRY2(ffxFsr2ContextGenerateReactiveMask(&internal_context->context, &dispatchParameters));
         break;

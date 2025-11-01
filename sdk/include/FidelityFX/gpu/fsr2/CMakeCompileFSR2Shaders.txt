@@ -59,9 +59,21 @@ file(GLOB FSR2_SHADERS
 	"shaders/fsr2/ffx_fsr2_reconstruct_previous_depth_pass.${FSR2_SHADER_EXT}"
 	"shaders/fsr2/ffx_fsr2_tcr_autogen_pass.${FSR2_SHADER_EXT}")
 
-compile_shaders_with_depfile(
-    "${FFX_SC_EXECUTABLE}"
-    "${FSR2_BASE_ARGS}" "${FSR2_API_BASE_ARGS}" "${FSR2_PERMUTATION_ARGS}" "${FSR2_INCLUDE_ARGS}"
-    "${FSR2_SHADERS}" "${FFX_PASS_SHADER_OUTPUT_PATH}" FSR2_PERMUTATION_OUTPUTS)
+	# message (STATUS "FSR2_PERMUTATION_OUTPUTS_PRE list begin")
+    # foreach (XXX ${FSR2_PERMUTATION_OUTPUTS})
+	# 	message (STATUS "FSR2_PERMUTATION_OUTPUTS_PRE:${XXX}")
+    # endforeach()
+	# message (STATUS "FSR2_PERMUTATION_OUTPUTS_PRE list end")
+
+    compile_shaders_with_depfile(
+        "${FFX_SC_EXECUTABLE}"
+        "${FSR2_BASE_ARGS}" "${FSR2_API_BASE_ARGS}" "${FSR2_PERMUTATION_ARGS}" "${FSR2_INCLUDE_ARGS}"
+        "${FSR2_SHADERS}" "${FFX_PASS_SHADER_OUTPUT_PATH}" FSR2_PERMUTATION_OUTPUTS)
+
+	# message (STATUS "FSR2_PERMUTATION_OUTPUTS_POST list begin")
+    # foreach (XXX ${FSR2_PERMUTATION_OUTPUTS})
+	# 	message (STATUS "FSR2_PERMUTATION_OUTPUTS_POST:${XXX}")
+    # endforeach()
+	# message (STATUS "FSR2_PERMUTATION_OUTPUTS_POST list end")
 
 add_shader_output("${FSR2_PERMUTATION_OUTPUTS}")

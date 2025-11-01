@@ -1,7 +1,7 @@
 // This file is part of the FidelityFX SDK.
 //
 // Copyright (C) 2024 Advanced Micro Devices, Inc.
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files(the "Software"), to deal
 // in the Software without restriction, including without limitation the rights
@@ -23,7 +23,7 @@
 #pragma once
 #include "ffx_provider.h"
 #include <ffx_api/ffx_api.hpp>
-#include <FidelityFx/host/ffx_interface.h>
+#include "../../sdk/include/FidelityFX/host/ffx_interface.h"
 
 ffxReturnCode_t CreateBackend(const ffxCreateContextDescHeader* desc, bool& backendFound, FfxInterface* iface, size_t contexts, Allocator& alloc);
 

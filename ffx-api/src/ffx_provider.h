@@ -1,7 +1,7 @@
 // This file is part of the FidelityFX SDK.
 //
 // Copyright (C) 2024 Advanced Micro Devices, Inc.
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files(the "Software"), to deal
 // in the Software without restriction, including without limitation the rights
@@ -23,16 +23,23 @@
 #pragma once
 #include <ffx_api/ffx_api.hpp>
 #include <ffx_api/ffx_api_types.h>
-#include <FidelityFx/host/ffx_types.h>
+#include "../../sdk/include/FidelityFX/host/ffx_types.h"
+
+#include <cstdlib>
+#include <cstring>
+#include <new>
 
 #define VERIFY(_cond, _retcode) \
-    if (!(_cond)) return _retcode
+    if (!(_cond))               \
+    return _retcode
 
-#define TRY(_expr) \
-    if (ffxReturnCode_t _rc = (_expr); _rc != FFX_API_RETURN_OK) return _rc
+#define TRY(_expr)                                               \
+    if (ffxReturnCode_t _rc = (_expr); _rc != FFX_API_RETURN_OK) \
+    return _rc
 
-#define TRY2(_expr) \
-    if (FFX_OK != (_expr)) return FFX_API_RETURN_ERROR_RUNTIME_ERROR
+#define TRY2(_expr)        \
+    if (FFX_OK != (_expr)) \
+    return FFX_API_RETURN_ERROR_RUNTIME_ERROR
 
 struct Allocator
 {
@@ -54,11 +61,11 @@ struct Allocator
             free(ptr);
     }
 
-    template<typename T, typename... Args>
+    template <typename T, typename... Args>
     T* construct(Args&&... args)
     {
         void* addr = alloc(sizeof(T));
-        return ::new(addr) T(std::forward<Args>(args)...);
+        return ::new (addr) T(std::forward<Args>(args)...);
     }
 };
 
@@ -100,13 +107,13 @@ struct InternalContextHeader
     const ffxProvider* provider;
 };
 
-template<typename T>
+template <typename T>
 static inline T ConvertEnum(uint32_t enumVal)
 {
     return static_cast<T>(enumVal);
 }
 
-template<typename T>
+template <typename T>
 static inline uint32_t ReverseConvertEnum(T enumVal)
 {
     return static_cast<T>(enumVal);
@@ -116,31 +123,31 @@ static inline FfxResource Convert(const FfxApiResource& inRes)
 {
     FfxResource outRes{};
     memset(outRes.name, 0, sizeof(outRes.name));
-    outRes.resource = inRes.resource;
-    outRes.state = ConvertEnum<FfxResourceStates>(inRes.state);
-    outRes.description.type = ConvertEnum<FfxResourceType>(inRes.description.type);
-    outRes.description.format = ConvertEnum<FfxSurfaceFormat>(inRes.description.format);
-    outRes.description.width = inRes.description.width;
-    outRes.description.height = inRes.description.height;
-    outRes.description.depth = inRes.description.depth;
+    outRes.resource             = inRes.resource;
+    outRes.state                = ConvertEnum<FfxResourceStates>(inRes.state);
+    outRes.description.type     = ConvertEnum<FfxResourceType>(inRes.description.type);
+    outRes.description.format   = ConvertEnum<FfxSurfaceFormat>(inRes.description.format);
+    outRes.description.width    = inRes.description.width;
+    outRes.description.height   = inRes.description.height;
+    outRes.description.depth    = inRes.description.depth;
     outRes.description.mipCount = inRes.description.mipCount;
-    outRes.description.flags = ConvertEnum<FfxResourceFlags>(inRes.description.flags);
-    outRes.description.usage = ConvertEnum<FfxResourceUsage>(inRes.description.usage);
+    outRes.description.flags    = ConvertEnum<FfxResourceFlags>(inRes.description.flags);
+    outRes.description.usage    = ConvertEnum<FfxResourceUsage>(inRes.description.usage);
     return outRes;
 }
 
 static inline FfxApiResource Convert(const FfxResource& inRes)
 {
     FfxApiResource outRes{};
-    outRes.resource = inRes.resource;
-    outRes.state = ReverseConvertEnum<FfxResourceStates>(inRes.state);
-    outRes.description.type = ReverseConvertEnum<FfxResourceType>(inRes.description.type);
-    outRes.description.format = ReverseConvertEnum<FfxSurfaceFormat>(inRes.description.format);
-    outRes.description.width = inRes.description.width;
-    outRes.description.height = inRes.description.height;
-    outRes.description.depth = inRes.description.depth;
+    outRes.resource             = inRes.resource;
+    outRes.state                = ReverseConvertEnum<FfxResourceStates>(inRes.state);
+    outRes.description.type     = ReverseConvertEnum<FfxResourceType>(inRes.description.type);
+    outRes.description.format   = ReverseConvertEnum<FfxSurfaceFormat>(inRes.description.format);
+    outRes.description.width    = inRes.description.width;
+    outRes.description.height   = inRes.description.height;
+    outRes.description.depth    = inRes.description.depth;
     outRes.description.mipCount = inRes.description.mipCount;
-    outRes.description.flags = ReverseConvertEnum<FfxResourceFlags>(inRes.description.flags);
-    outRes.description.usage = ReverseConvertEnum<FfxResourceUsage>(inRes.description.usage);
+    outRes.description.flags    = ReverseConvertEnum<FfxResourceFlags>(inRes.description.flags);
+    outRes.description.usage    = ReverseConvertEnum<FfxResourceUsage>(inRes.description.usage);
     return outRes;
 }

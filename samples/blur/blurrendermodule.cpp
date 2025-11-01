@@ -1,7 +1,7 @@
 // This file is part of the FidelityFX SDK.
 //
 // Copyright (C) 2024 Advanced Micro Devices, Inc.
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files(the "Software"), to deal
 // in the Software without restriction, including without limitation the rights
@@ -39,7 +39,7 @@
 
 using namespace cauldron;
 
-static const char* s_FloatingPointMathOptions[] = {"Use FP16", "Use FP32"};
+static const char*    s_FloatingPointMathOptions[] = {"Use FP16", "Use FP32"};
 FfxBlurFloatPrecision GetFloatPrecision(int32_t fpMathIndex)
 {
     std::string floatingPointMath = s_FloatingPointMathOptions[fpMathIndex];
@@ -52,11 +52,11 @@ FfxBlurFloatPrecision GetFloatPrecision(int32_t fpMathIndex)
         // Unhandled float precision value.
         CAULDRON_ASSERT(false);
     }
-        
+
     return FFX_BLUR_FLOAT_PRECISION_COUNT;
 }
 
-static const char* s_GaussianSigmaOptions[] = {"1.6", "2.8", "4.0"};
+static const char*       s_GaussianSigmaOptions[] = {"1.6", "2.8", "4.0"};
 FfxBlurKernelPermutation GetGaussianSigmaPermutation(int32_t sigmaIndex)
 {
     if (sigmaIndex == 0)
@@ -75,7 +75,7 @@ FfxBlurKernelPermutation GetGaussianSigmaPermutation(int32_t sigmaIndex)
 }
 
 static const char* s_KernelSizeOptions[] = {"3x3", "5x5", "7x7", "9x9", "11x11", "13x13", "15x15", "17x17", "19x19", "21x21"};
-FfxBlurKernelSize GetKernelSize(int32_t kernelSizeIndex)
+FfxBlurKernelSize  GetKernelSize(int32_t kernelSizeIndex)
 {
     std::string kernelSize = s_KernelSizeOptions[kernelSizeIndex];
     if (kernelSize == "3x3")
@@ -107,7 +107,6 @@ FfxBlurKernelSize GetKernelSize(int32_t kernelSizeIndex)
     return (FfxBlurKernelSize)FFX_BLUR_KERNEL_SIZE_COUNT;
 }
 
-
 BlurRenderModule::BlurRenderModule()
     : RenderModule(L"BlurRenderModule")
 {
@@ -120,63 +119,46 @@ void BlurRenderModule::Init(const json& initData)
     if (uiSection)
     {
         std::vector<const char*> algoOptions = {
-            "None", "FidelityFX Blur", "Single Pass Box Filter",
-            "Multi-pass Separable Filter", "Multi-pass Separable Filter Transpose"};
-        uiSection->RegisterUIElement<UICombo>(
-            "Algorithm",
-            m_CurrentAlgorithm1,
-            algoOptions,
-            [this](int32_t cur, int32_t old) {
-                if (cur != old)
+            "None", "FidelityFX Blur", "Single Pass Box Filter", "Multi-pass Separable Filter", "Multi-pass Separable Filter Transpose"};
+        uiSection->RegisterUIElement<UICombo>("Algorithm", m_CurrentAlgorithm1, algoOptions, [this](int32_t cur, int32_t old) {
+            if (cur != old)
+            {
+                m_EnableFilterOptions1 = m_CurrentAlgorithm1 != static_cast<int32_t>(Algorithm::NONE);
+
+                if (m_CurrentAlgorithm1 == static_cast<int32_t>(Algorithm::FIDELITYFX_BLUR_GAUSSIAN))
                 {
-                    m_EnableFilterOptions1 = m_CurrentAlgorithm1 != static_cast<int32_t>(Algorithm::NONE);
-
-                    if (m_CurrentAlgorithm1 == static_cast<int32_t>(Algorithm::FIDELITYFX_BLUR_GAUSSIAN))
-                    {
-                        DestroyBlurContexts();
-                        CreateBlurContexts();
-                    }
+                    DestroyBlurContexts();
+                    CreateBlurContexts();
                 }
-            });
+            }
+        });
 
-        std::vector<const char*> gaussianSigmaOptions(s_GaussianSigmaOptions, s_GaussianSigmaOptions + _countof(s_GaussianSigmaOptions));
+        std::vector<const char*> gaussianSigmaOptions(s_GaussianSigmaOptions, s_GaussianSigmaOptions + std::size(s_GaussianSigmaOptions));
         uiSection->RegisterUIElement<UICombo>("Gaussian Kernel Sigma", m_CurrentGaussianSigma1, gaussianSigmaOptions, m_EnableFilterOptions1);
 
-        std::vector<const char*> kernOptions(s_KernelSizeOptions, s_KernelSizeOptions + _countof(s_KernelSizeOptions));
+        std::vector<const char*> kernOptions(s_KernelSizeOptions, s_KernelSizeOptions + std::size(s_KernelSizeOptions));
         uiSection->RegisterUIElement<UICombo>("Kernel Size", m_CurrentKernelSize1, kernOptions, m_EnableFilterOptions1);
 
-        std::vector<const char*> mathOptions(s_FloatingPointMathOptions, s_FloatingPointMathOptions + _countof(s_FloatingPointMathOptions));
-        uiSection->RegisterUIElement<UICombo>(
-            "Floating Point Math",
-            m_CurrentFpMath1,
-            mathOptions,
-            m_EnableFilterOptions1,
-            [this](int32_t cur, int32_t old) {
-                if (cur != old)
+        std::vector<const char*> mathOptions(s_FloatingPointMathOptions, s_FloatingPointMathOptions + std::size(s_FloatingPointMathOptions));
+        uiSection->RegisterUIElement<UICombo>("Floating Point Math", m_CurrentFpMath1, mathOptions, m_EnableFilterOptions1, [this](int32_t cur, int32_t old) {
+            if (cur != old)
+            {
+                if (m_CurrentAlgorithm1 == static_cast<int32_t>(Algorithm::FIDELITYFX_BLUR_GAUSSIAN))
                 {
-                    if (m_CurrentAlgorithm1 == static_cast<int32_t>(Algorithm::FIDELITYFX_BLUR_GAUSSIAN))
-                    {
-                        DestroyBlurContexts();
-                        CreateBlurContexts();
-                    }
+                    DestroyBlurContexts();
+                    CreateBlurContexts();
                 }
-            });
+            }
+        });
 
-        uiSection->RegisterUIElement<UICheckBox>(
-            "Display the difference between two algorithms.",
-            m_ComparisonModeEnabled,
-            [this](bool cur, bool old) {
-                m_EnableFilterOptions2 = cur ? m_CurrentAlgorithm2 != static_cast<int32_t>(Algorithm::NONE) : false;
-            });
+        uiSection->RegisterUIElement<UICheckBox>("Display the difference between two algorithms.", m_ComparisonModeEnabled, [this](bool cur, bool old) {
+            m_EnableFilterOptions2 = cur ? m_CurrentAlgorithm2 != static_cast<int32_t>(Algorithm::NONE) : false;
+        });
         uiSection->RegisterUIElement<UISeparator>();
 
         // Add controls for the comparison mode that are enabled/disabled by m_ComparisonModeEnabled.
         uiSection->RegisterUIElement<UICombo>(
-            "Compare Algorithm",
-            m_CurrentAlgorithm2,
-            std::move(algoOptions),
-            m_ComparisonModeEnabled,
-            [this](int32_t cur, int32_t old) {
+            "Compare Algorithm", m_CurrentAlgorithm2, std::move(algoOptions), m_ComparisonModeEnabled, [this](int32_t cur, int32_t old) {
                 if (cur != old)
                 {
                     m_EnableFilterOptions2 = m_CurrentAlgorithm2 != static_cast<int32_t>(Algorithm::NONE);
@@ -194,11 +176,7 @@ void BlurRenderModule::Init(const json& initData)
         uiSection->RegisterUIElement<UICombo>("Compare Kernel Size", m_CurrentKernelSize2, std::move(kernOptions), m_EnableFilterOptions2);
 
         uiSection->RegisterUIElement<UICombo>(
-            "Compare FP Math",
-            m_CurrentFpMath2,
-            std::move(mathOptions),
-            m_EnableFilterOptions2,
-            [this](int32_t cur, int32_t old) {
+            "Compare FP Math", m_CurrentFpMath2, std::move(mathOptions), m_EnableFilterOptions2, [this](int32_t cur, int32_t old) {
                 if (cur != old)
                 {
                     if (m_CurrentAlgorithm2 == static_cast<int32_t>(Algorithm::FIDELITYFX_BLUR_GAUSSIAN))
@@ -233,7 +211,7 @@ void BlurRenderModule::InitTextures()
     m_pOutput = GetFramework()->GetColorTargetForCallback(GetName());
 
     TextureDesc texDesc = m_pOutput->GetDesc();
-    texDesc.MipLevels = 1;
+    texDesc.MipLevels   = 1;
 
     auto& resizeFunc = [](TextureDesc& desc, uint32_t displayWidth, uint32_t displayHeight, uint32_t, uint32_t) {
         desc.Width  = displayWidth;
@@ -245,7 +223,7 @@ void BlurRenderModule::InitTextures()
     m_pInput     = GetDynamicResourcePool()->CreateRenderTexture(&texDesc, resizeFunc);
 
     texDesc.Name         = L"BLUR_ComparisonOutput1";
-    m_pComparisonOutput1 = GetDynamicResourcePool()->CreateRenderTexture(&texDesc,  resizeFunc);
+    m_pComparisonOutput1 = GetDynamicResourcePool()->CreateRenderTexture(&texDesc, resizeFunc);
     texDesc.Name         = L"BLUR_ComparisonOutput2";
     m_pComparisonOutput2 = GetDynamicResourcePool()->CreateRenderTexture(&texDesc, resizeFunc);
 
@@ -285,19 +263,20 @@ void BlurRenderModule::InitFfxBackend()
     if (m_BackendInterface.scratchBuffer)
         free(m_BackendInterface.scratchBuffer);
 
-    size_t scratchBufferSize = SDKWrapper::ffxGetScratchMemorySize(2 * FFX_BLUR_CONTEXT_COUNT);
-    void* scratchBuffer = calloc(scratchBufferSize, 1u);
+    size_t       scratchBufferSize = SDKWrapper::ffxGetScratchMemorySize(2 * FFX_BLUR_CONTEXT_COUNT);
+    void*        scratchBuffer     = calloc(scratchBufferSize, 1u);
     FfxErrorCode errorCode = SDKWrapper::ffxGetInterface(&m_BackendInterface, GetDevice(), scratchBuffer, scratchBufferSize, 2 * FFX_BLUR_CONTEXT_COUNT);
     CAULDRON_ASSERT(errorCode == FFX_OK);
 
     // valid effect library and backend versions
-    CauldronAssert(ASSERT_CRITICAL, m_BackendInterface.fpGetSDKVersion(&m_BackendInterface) == FFX_SDK_MAKE_VERSION(1, 1, 4),
-                        L"FidelityFX Blur 1.1 sample requires linking with a 1.1.4 version SDK backend");
+    CauldronAssert(ASSERT_CRITICAL,
+                   m_BackendInterface.fpGetSDKVersion(&m_BackendInterface) == FFX_SDK_MAKE_VERSION(1, 1, 4),
+                   L"FidelityFX Blur 1.1 sample requires linking with a 1.1.4 version SDK backend");
 
+    CauldronAssert(ASSERT_CRITICAL,
+                   ffxBlurGetEffectVersion() == FFX_SDK_MAKE_VERSION(1, 1, 0),
+                   L"FidelityFX Blur 1.1 sample requires linking with a 1.1 version FidelityFX Blur library");
 
-    CauldronAssert(ASSERT_CRITICAL, ffxBlurGetEffectVersion() == FFX_SDK_MAKE_VERSION(1, 1, 0),
-                       L"FidelityFX Blur 1.1 sample requires linking with a 1.1 version FidelityFX Blur library");
-                       
     m_BackendInterface.fpRegisterConstantBufferAllocator(&m_BackendInterface, SDKWrapper::ffxAllocateConstantBuffer);
 }
 
@@ -318,25 +297,19 @@ void BlurRenderModule::InitPipelines()
 
     m_pFilterPipelineRootSig = RootSignature::CreateRootSignature(rootName.c_str(), filterRootSigDesc);
 
-    const wchar_t* gaussianSigmaPermutations[] = {L"0", L"1", L"2"};
-    const wchar_t* kernelSizes[] = {L"3", L"5", L"7", L"9", L"11", L"13", L"15", L"17", L"19", L"21"};
-    m_KernelSizesCount = _countof(kernelSizes);
+    const wchar_t* gaussianSigmaPermutations[]  = {L"0", L"1", L"2"};
+    const wchar_t* kernelSizes[]                = {L"3", L"5", L"7", L"9", L"11", L"13", L"15", L"17", L"19", L"21"};
+    m_KernelSizesCount                          = std::size(kernelSizes);
     const wchar_t* baselineFiltersComputeShader = L"blur_baseline_filters_cs.hlsl";
 
     CreateSinglePassBoxFilterPipelines(
-        gaussianSigmaPermutations, _countof(gaussianSigmaPermutations),
-        kernelSizes, m_KernelSizesCount,
-        baselineFiltersComputeShader);
+        gaussianSigmaPermutations, std::size(gaussianSigmaPermutations), kernelSizes, m_KernelSizesCount, baselineFiltersComputeShader);
 
     CreateMultiPassSeparableFilterPipelines(
-        gaussianSigmaPermutations, _countof(gaussianSigmaPermutations),
-        kernelSizes, m_KernelSizesCount,
-        baselineFiltersComputeShader);
+        gaussianSigmaPermutations, std::size(gaussianSigmaPermutations), kernelSizes, m_KernelSizesCount, baselineFiltersComputeShader);
 
     CreateMultiPassSeparableTransposeFilterPipelines(
-        gaussianSigmaPermutations, _countof(gaussianSigmaPermutations),
-        kernelSizes, m_KernelSizesCount,
-        baselineFiltersComputeShader);
+        gaussianSigmaPermutations, std::size(gaussianSigmaPermutations), kernelSizes, m_KernelSizesCount, baselineFiltersComputeShader);
 
     CreatePassThroughPipeline(baselineFiltersComputeShader);
 
@@ -346,18 +319,14 @@ void BlurRenderModule::InitPipelines()
     compareRootSigDesc.AddTextureSRVSet(1, ShaderBindStage::Compute, 1);
     compareRootSigDesc.AddTextureUAVSet(0, ShaderBindStage::Compute, 1);
 
-    rootName = L"BlurEffect_CompareRootSignature";
+    rootName                     = L"BlurEffect_CompareRootSignature";
     m_pComparisonPipelineRootSig = RootSignature::CreateRootSignature(rootName.c_str(), compareRootSigDesc);
 
     DefineList defines;
     m_pComparisonPipeline = CreatePipeline(m_pComparisonPipelineRootSig, L"BlurEffect_ComparisonPipeline", L"blur_compare_filters_cs.hlsl", L"MainCS", defines);
 
     m_pComparisonPipelineParams =
-        CreateComparisonParameterSet(m_pComparisonPipelineRootSig,
-                                     sizeof(ComparisonConstants),
-                                     *m_pComparisonOutput1,
-                                     *m_pComparisonOutput2,
-                                     *m_pOutput);
+        CreateComparisonParameterSet(m_pComparisonPipelineRootSig, sizeof(ComparisonConstants), *m_pComparisonOutput1, *m_pComparisonOutput2, *m_pOutput);
 }
 
 static ParameterSet* CreateParameterSet(RootSignature* pRootSignature, size_t constantsSizeBytes, const Texture& input, const Texture& output)
@@ -374,15 +343,13 @@ static ParameterSet* CreateParameterSet(RootSignature* pRootSignature, size_t co
 void BlurRenderModule::CreatePassThroughPipeline(const wchar_t* computeShaderFilename)
 {
     DefineList defines;
-    defines[L"PASSTHROUGH"] = L"1";
-    defines[L"KERNEL_DIMENSION"] = L"3"; // The PassThrough shader doesn't use this, but the shader code requires it to be defined.
-    m_pPassThroughPipeline = CreatePipeline(m_pFilterPipelineRootSig, L"PassThrough", computeShaderFilename, L"CSMain_PassThrough", defines);
+    defines[L"PASSTHROUGH"]      = L"1";
+    defines[L"KERNEL_DIMENSION"] = L"3";  // The PassThrough shader doesn't use this, but the shader code requires it to be defined.
+    m_pPassThroughPipeline       = CreatePipeline(m_pFilterPipelineRootSig, L"PassThrough", computeShaderFilename, L"CSMain_PassThrough", defines);
 }
 
 void BlurRenderModule::CreateSinglePassBoxFilterPipelines(
-    const wchar_t** ppSigmas, size_t sigmasCount,
-    const wchar_t** ppKernelSizes, size_t kernelSizesCount,
-    const wchar_t* computeShaderFilename)
+    const wchar_t** ppSigmas, size_t sigmasCount, const wchar_t** ppKernelSizes, size_t kernelSizesCount, const wchar_t* computeShaderFilename)
 {
     DefineList defines;
     // #define macro that enables the single pass entry func.
@@ -410,9 +377,7 @@ void BlurRenderModule::CreateSinglePassBoxFilterPipelines(
 }
 
 void BlurRenderModule::CreateMultiPassSeparableFilterPipelines(
-    const wchar_t** ppSigmas, size_t sigmasCount,
-    const wchar_t** ppKernelSizes, size_t kernelSizesCount,
-    const wchar_t* computeShaderFilename)
+    const wchar_t** ppSigmas, size_t sigmasCount, const wchar_t** ppKernelSizes, size_t kernelSizesCount, const wchar_t* computeShaderFilename)
 {
     DefineList defines;
     // #define macro that enables the multi pass entry func.
@@ -424,33 +389,31 @@ void BlurRenderModule::CreateMultiPassSeparableFilterPipelines(
         {
             defines[L"KERNEL_DIMENSION"] = ppKernelSizes[i];
             defines[L"HALF_PRECISION"]   = L"1";
-            m_MultiPassSeparableFilterPipelinesFp16.push_back(CreatePipeline(
-                m_pFilterPipelineRootSig, L"MultiPassSeparableFilterFP16Pass1", computeShaderFilename, L"CSMain_SeparableFilter_X", defines));
-            m_MultiPassSeparableFilterPipelinesFp16.push_back(CreatePipeline(
-                m_pFilterPipelineRootSig, L"MultiPassSeparableFilterFP16Pass2", computeShaderFilename, L"CSMain_SeparableFilter_Y", defines));
+            m_MultiPassSeparableFilterPipelinesFp16.push_back(
+                CreatePipeline(m_pFilterPipelineRootSig, L"MultiPassSeparableFilterFP16Pass1", computeShaderFilename, L"CSMain_SeparableFilter_X", defines));
+            m_MultiPassSeparableFilterPipelinesFp16.push_back(
+                CreatePipeline(m_pFilterPipelineRootSig, L"MultiPassSeparableFilterFP16Pass2", computeShaderFilename, L"CSMain_SeparableFilter_Y", defines));
 
             defines[L"HALF_PRECISION"] = L"0";
-            m_MultiPassSeparableFilterPipelinesFp32.push_back(CreatePipeline(
-                m_pFilterPipelineRootSig, L"MultiPassSeparableFilterFP32Pass1", computeShaderFilename, L"CSMain_SeparableFilter_X", defines));
-            m_MultiPassSeparableFilterPipelinesFp32.push_back(CreatePipeline(
-                m_pFilterPipelineRootSig, L"MultiPassSeparableFilterFP32Pass2", computeShaderFilename, L"CSMain_SeparableFilter_Y", defines));
+            m_MultiPassSeparableFilterPipelinesFp32.push_back(
+                CreatePipeline(m_pFilterPipelineRootSig, L"MultiPassSeparableFilterFP32Pass1", computeShaderFilename, L"CSMain_SeparableFilter_X", defines));
+            m_MultiPassSeparableFilterPipelinesFp32.push_back(
+                CreatePipeline(m_pFilterPipelineRootSig, L"MultiPassSeparableFilterFP32Pass2", computeShaderFilename, L"CSMain_SeparableFilter_Y", defines));
         }
     }
 
-    m_MultiPassParams.pPass1NormalModeParams  = CreateParameterSet(m_pFilterPipelineRootSig, sizeof(Constants), *m_pInput, *m_pPass1Output);
+    m_MultiPassParams.pPass1NormalModeParams = CreateParameterSet(m_pFilterPipelineRootSig, sizeof(Constants), *m_pInput, *m_pPass1Output);
     m_MultiPassParams.pPass2NormalModeParams = CreateParameterSet(m_pFilterPipelineRootSig, sizeof(Constants), *m_pPass1Output, *m_pOutput);
 
-    m_MultiPassParams.pPass1ComparisonModeParams1  = CreateParameterSet(m_pFilterPipelineRootSig, sizeof(Constants), *m_pInput, *m_pPass1Output);
+    m_MultiPassParams.pPass1ComparisonModeParams1 = CreateParameterSet(m_pFilterPipelineRootSig, sizeof(Constants), *m_pInput, *m_pPass1Output);
     m_MultiPassParams.pPass2ComparisonModeParams1 = CreateParameterSet(m_pFilterPipelineRootSig, sizeof(Constants), *m_pPass1Output, *m_pComparisonOutput1);
 
-    m_MultiPassParams.pPass1ComparisonModeParams2  = CreateParameterSet(m_pFilterPipelineRootSig, sizeof(Constants), *m_pInput, *m_pPass1Output);
+    m_MultiPassParams.pPass1ComparisonModeParams2 = CreateParameterSet(m_pFilterPipelineRootSig, sizeof(Constants), *m_pInput, *m_pPass1Output);
     m_MultiPassParams.pPass2ComparisonModeParams2 = CreateParameterSet(m_pFilterPipelineRootSig, sizeof(Constants), *m_pPass1Output, *m_pComparisonOutput2);
 }
 
 void BlurRenderModule::CreateMultiPassSeparableTransposeFilterPipelines(
-    const wchar_t** ppSigmas, size_t sigmasCount,
-    const wchar_t** ppKernelSizes, size_t kernelSizesCount,
-    const wchar_t* computeShaderFilename)
+    const wchar_t** ppSigmas, size_t sigmasCount, const wchar_t** ppKernelSizes, size_t kernelSizesCount, const wchar_t* computeShaderFilename)
 {
     DefineList defines;
     // #define macro that enables the multi pass entry func.
@@ -472,22 +435,22 @@ void BlurRenderModule::CreateMultiPassSeparableTransposeFilterPipelines(
         }
     }
 
-    m_MultiPassTransposeParams.pPass1NormalModeParams  = CreateParameterSet(m_pFilterPipelineRootSig, sizeof(Constants), *m_pInput, *m_pTransposePass1Output);
+    m_MultiPassTransposeParams.pPass1NormalModeParams = CreateParameterSet(m_pFilterPipelineRootSig, sizeof(Constants), *m_pInput, *m_pTransposePass1Output);
     m_MultiPassTransposeParams.pPass2NormalModeParams = CreateParameterSet(m_pFilterPipelineRootSig, sizeof(Constants), *m_pTransposePass1Output, *m_pOutput);
 
-    m_MultiPassTransposeParams.pPass1ComparisonModeParams1  = CreateParameterSet(m_pFilterPipelineRootSig, sizeof(Constants), *m_pInput, *m_pTransposePass1Output);
-    m_MultiPassTransposeParams.pPass2ComparisonModeParams1 = CreateParameterSet(m_pFilterPipelineRootSig, sizeof(Constants), *m_pTransposePass1Output, *m_pComparisonOutput1);
+    m_MultiPassTransposeParams.pPass1ComparisonModeParams1 =
+        CreateParameterSet(m_pFilterPipelineRootSig, sizeof(Constants), *m_pInput, *m_pTransposePass1Output);
+    m_MultiPassTransposeParams.pPass2ComparisonModeParams1 =
+        CreateParameterSet(m_pFilterPipelineRootSig, sizeof(Constants), *m_pTransposePass1Output, *m_pComparisonOutput1);
 
-    m_MultiPassTransposeParams.pPass1ComparisonModeParams2  = CreateParameterSet(m_pFilterPipelineRootSig, sizeof(Constants), *m_pInput, *m_pTransposePass1Output);
-    m_MultiPassTransposeParams.pPass2ComparisonModeParams2 = CreateParameterSet(m_pFilterPipelineRootSig, sizeof(Constants), *m_pTransposePass1Output, *m_pComparisonOutput2);
+    m_MultiPassTransposeParams.pPass1ComparisonModeParams2 =
+        CreateParameterSet(m_pFilterPipelineRootSig, sizeof(Constants), *m_pInput, *m_pTransposePass1Output);
+    m_MultiPassTransposeParams.pPass2ComparisonModeParams2 =
+        CreateParameterSet(m_pFilterPipelineRootSig, sizeof(Constants), *m_pTransposePass1Output, *m_pComparisonOutput2);
 }
 
 PipelineObject* BlurRenderModule::CreatePipeline(
-    RootSignature* pRootSignature,
-    const std::wstring& pipelineName,
-    const std::wstring& shaderFile,
-    const std::wstring& entryFunc,
-    DefineList& defines)
+    RootSignature* pRootSignature, const std::wstring& pipelineName, const std::wstring& shaderFile, const std::wstring& entryFunc, DefineList& defines)
 {
     // Setup the pipeline object
     PipelineDesc psoDesc;
@@ -506,10 +469,10 @@ void BlurRenderModule::CreateBlurContexts()
     {
         FfxBlurContextDescription desc = {};
 
-        desc.backendInterface = m_BackendInterface;
-        desc.floatPrecision   = GetFloatPrecision(m_CurrentFpMath1);
+        desc.backendInterface   = m_BackendInterface;
+        desc.floatPrecision     = GetFloatPrecision(m_CurrentFpMath1);
         desc.kernelPermutations = FFX_BLUR_KERNEL_PERMUTATIONS_ALL;
-        desc.kernelSizes      = FFX_BLUR_KERNEL_SIZE_ALL;
+        desc.kernelSizes        = FFX_BLUR_KERNEL_SIZE_ALL;
 
         ffxBlurContextCreate(&m_BlurContext1, &desc);
 
@@ -520,10 +483,10 @@ void BlurRenderModule::CreateBlurContexts()
     {
         FfxBlurContextDescription desc = {};
 
-        desc.backendInterface = m_BackendInterface;
-        desc.floatPrecision   = GetFloatPrecision(m_CurrentFpMath2);
+        desc.backendInterface   = m_BackendInterface;
+        desc.floatPrecision     = GetFloatPrecision(m_CurrentFpMath2);
         desc.kernelPermutations = FFX_BLUR_KERNEL_PERMUTATIONS_ALL;
-        desc.kernelSizes      = FFX_BLUR_KERNEL_SIZE_ALL;
+        desc.kernelSizes        = FFX_BLUR_KERNEL_SIZE_ALL;
 
         ffxBlurContextCreate(&m_BlurContext2, &desc);
 
@@ -557,29 +520,29 @@ BlurRenderModule::~BlurRenderModule()
 
     // Release the scratch buffer memory
     free(m_BackendInterface.scratchBuffer);
-    
+
     if (m_pComparisonPipeline)
         delete m_pComparisonPipeline;
 
     if (m_pPassThroughPipeline)
         delete m_pPassThroughPipeline;
 
-    for (auto& pPSO: m_SinglePassBoxFilterPipelinesFp16)
+    for (auto& pPSO : m_SinglePassBoxFilterPipelinesFp16)
         delete pPSO;
 
-    for (auto& pPSO: m_SinglePassBoxFilterPipelinesFp32)
+    for (auto& pPSO : m_SinglePassBoxFilterPipelinesFp32)
         delete pPSO;
 
-    for (auto& pPSO: m_MultiPassSeparableFilterPipelinesFp16)
+    for (auto& pPSO : m_MultiPassSeparableFilterPipelinesFp16)
         delete pPSO;
 
-    for (auto& pPSO: m_MultiPassSeparableFilterPipelinesFp32)
+    for (auto& pPSO : m_MultiPassSeparableFilterPipelinesFp32)
         delete pPSO;
 
-    for (auto& pPSO: m_MultiPassSeparableTransposeFilterPipelinesFp16)
+    for (auto& pPSO : m_MultiPassSeparableTransposeFilterPipelinesFp16)
         delete pPSO;
 
-    for (auto& pPSO: m_MultiPassSeparableTransposeFilterPipelinesFp32)
+    for (auto& pPSO : m_MultiPassSeparableTransposeFilterPipelinesFp32)
         delete pPSO;
 }
 
@@ -611,34 +574,27 @@ void BlurRenderModule::Execute(double deltaTime, CommandList* pCmdList)
     // We need to copy the current color buffer to our input buffer because we need to write our output
     // to the current color buffer so that it is used as input by the RenderModule that follows us.
     std::array<Barrier, 4u> barriers;
-    barriers[0] = Barrier::Transition(m_pInput->GetResource(),
-        ResourceState::NonPixelShaderResource | ResourceState::PixelShaderResource,
-        ResourceState::CopyDest);
-    barriers[1] = Barrier::Transition(m_pOutput->GetResource(),
-        ResourceState::NonPixelShaderResource | ResourceState::PixelShaderResource,
-        ResourceState::CopySource);
+    barriers[0] =
+        Barrier::Transition(m_pInput->GetResource(), ResourceState::NonPixelShaderResource | ResourceState::PixelShaderResource, ResourceState::CopyDest);
+    barriers[1] =
+        Barrier::Transition(m_pOutput->GetResource(), ResourceState::NonPixelShaderResource | ResourceState::PixelShaderResource, ResourceState::CopySource);
     ResourceBarrier(pCmdList, 2u, barriers.data());
 
     TextureCopyDesc desc(m_pOutput->GetResource(), m_pInput->GetResource());
     CopyTextureRegion(pCmdList, &desc);
 
     uint32_t barrierCount = 2;
-    barriers[0] = Barrier::Transition(m_pInput->GetResource(),
-        ResourceState::CopyDest,
-        ResourceState::NonPixelShaderResource | ResourceState::PixelShaderResource);
-    barriers[1] = Barrier::Transition(m_pOutput->GetResource(),
-        ResourceState::CopySource,
-        ResourceState::UnorderedAccess);
+    barriers[0] =
+        Barrier::Transition(m_pInput->GetResource(), ResourceState::CopyDest, ResourceState::NonPixelShaderResource | ResourceState::PixelShaderResource);
+    barriers[1] = Barrier::Transition(m_pOutput->GetResource(), ResourceState::CopySource, ResourceState::UnorderedAccess);
 
     if (m_ComparisonModeEnabled)
     {
-        barriers[2] = Barrier::Transition(m_pComparisonOutput1->GetResource(),
-            ResourceState::NonPixelShaderResource | ResourceState::PixelShaderResource,
-            ResourceState::UnorderedAccess);
+        barriers[2] = Barrier::Transition(
+            m_pComparisonOutput1->GetResource(), ResourceState::NonPixelShaderResource | ResourceState::PixelShaderResource, ResourceState::UnorderedAccess);
 
-        barriers[3] = Barrier::Transition(m_pComparisonOutput2->GetResource(),
-            ResourceState::NonPixelShaderResource | ResourceState::PixelShaderResource,
-            ResourceState::UnorderedAccess);
+        barriers[3] = Barrier::Transition(
+            m_pComparisonOutput2->GetResource(), ResourceState::NonPixelShaderResource | ResourceState::PixelShaderResource, ResourceState::UnorderedAccess);
 
         barrierCount += 2;
     }
@@ -655,8 +611,7 @@ void BlurRenderModule::Execute(double deltaTime, CommandList* pCmdList)
     case Algorithm::SINGLE_PASS_BOX_FILTER:
         ExecuteSinglePassBoxFilter(pCmdList,
                                    !m_ComparisonModeEnabled ? L"BoxFilter" : L"BoxFilter Compare1",
-                                   !m_ComparisonModeEnabled ?
-                                       m_SinglePassParams.pNormalModeParams : m_SinglePassParams.pComparisonModeParams1,
+                                   !m_ComparisonModeEnabled ? m_SinglePassParams.pNormalModeParams : m_SinglePassParams.pComparisonModeParams1,
                                    m_CurrentGaussianSigma1,
                                    m_CurrentKernelSize1,
                                    GetFloatPrecision(m_CurrentFpMath1));
@@ -665,25 +620,22 @@ void BlurRenderModule::Execute(double deltaTime, CommandList* pCmdList)
         ExecuteMultiPassFilter(pCmdList,
                                !m_ComparisonModeEnabled ? L"MultiPassFilter" : L"MultiPassFilter Compare1",
                                !m_ComparisonModeEnabled
-                                   ? ParameterSetPair(m_MultiPassParams.pPass1NormalModeParams,
-                                                      m_MultiPassParams.pPass2NormalModeParams)
-                                   : ParameterSetPair(m_MultiPassParams.pPass1ComparisonModeParams1,
-                                                      m_MultiPassParams.pPass2ComparisonModeParams1),
+                                   ? ParameterSetPair(m_MultiPassParams.pPass1NormalModeParams, m_MultiPassParams.pPass2NormalModeParams)
+                                   : ParameterSetPair(m_MultiPassParams.pPass1ComparisonModeParams1, m_MultiPassParams.pPass2ComparisonModeParams1),
                                m_CurrentGaussianSigma1,
                                m_CurrentKernelSize1,
                                GetFloatPrecision(m_CurrentFpMath1));
         break;
     case Algorithm::MULTI_PASS_SEPARABLE_FILTER_TRANSPOSE:
-        ExecuteMultiPassTransposeFilter(pCmdList,
-                                        !m_ComparisonModeEnabled ? L"MultiPassTranposeFilter" : L"MultiPassTransposeFilter Compare1",
-                                        !m_ComparisonModeEnabled
-                                            ? ParameterSetPair(m_MultiPassTransposeParams.pPass1NormalModeParams,
-                                                               m_MultiPassTransposeParams.pPass2NormalModeParams)
-                                            : ParameterSetPair(m_MultiPassTransposeParams.pPass1ComparisonModeParams1,
-                                                               m_MultiPassTransposeParams.pPass2ComparisonModeParams1),
-                                        m_CurrentGaussianSigma1,
-                                        m_CurrentKernelSize1,
-                                        GetFloatPrecision(m_CurrentFpMath1));
+        ExecuteMultiPassTransposeFilter(
+            pCmdList,
+            !m_ComparisonModeEnabled ? L"MultiPassTranposeFilter" : L"MultiPassTransposeFilter Compare1",
+            !m_ComparisonModeEnabled
+                ? ParameterSetPair(m_MultiPassTransposeParams.pPass1NormalModeParams, m_MultiPassTransposeParams.pPass2NormalModeParams)
+                : ParameterSetPair(m_MultiPassTransposeParams.pPass1ComparisonModeParams1, m_MultiPassTransposeParams.pPass2ComparisonModeParams1),
+            m_CurrentGaussianSigma1,
+            m_CurrentKernelSize1,
+            GetFloatPrecision(m_CurrentFpMath1));
         break;
     case Algorithm::FIDELITYFX_BLUR_GAUSSIAN:
     default:
@@ -698,18 +650,15 @@ void BlurRenderModule::Execute(double deltaTime, CommandList* pCmdList)
 
     if (m_ComparisonModeEnabled)
     {
-        barriers[0] = Barrier::Transition(m_pComparisonOutput1->GetResource(),
-            ResourceState::UnorderedAccess,
-            ResourceState::NonPixelShaderResource | ResourceState::PixelShaderResource);
+        barriers[0] = Barrier::Transition(
+            m_pComparisonOutput1->GetResource(), ResourceState::UnorderedAccess, ResourceState::NonPixelShaderResource | ResourceState::PixelShaderResource);
 
         ResourceBarrier(pCmdList, 1, barriers.data());
 
         switch (static_cast<Algorithm>(m_CurrentAlgorithm2))
         {
         case Algorithm::NONE:
-            ExecutePassThrough(pCmdList,
-                               L"None Compare2",
-                               m_SinglePassParams.pComparisonModeParams2);
+            ExecutePassThrough(pCmdList, L"None Compare2", m_SinglePassParams.pComparisonModeParams2);
             break;
         case Algorithm::SINGLE_PASS_BOX_FILTER:
             ExecuteSinglePassBoxFilter(pCmdList,
@@ -722,19 +671,19 @@ void BlurRenderModule::Execute(double deltaTime, CommandList* pCmdList)
         case Algorithm::MULTI_PASS_SEPARABLE_FILTER:
             ExecuteMultiPassFilter(pCmdList,
                                    L"MultiPassFilter Compare2",
-                                   ParameterSetPair(m_MultiPassParams.pPass1ComparisonModeParams2,
-                                                    m_MultiPassParams.pPass2ComparisonModeParams2),
+                                   ParameterSetPair(m_MultiPassParams.pPass1ComparisonModeParams2, m_MultiPassParams.pPass2ComparisonModeParams2),
                                    m_CurrentGaussianSigma2,
                                    m_CurrentKernelSize2,
                                    GetFloatPrecision(m_CurrentFpMath2));
             break;
         case Algorithm::MULTI_PASS_SEPARABLE_FILTER_TRANSPOSE:
-            ExecuteMultiPassTransposeFilter(pCmdList,
-                                            L"MultiPassTransposeFilter Compare2",
-                                            ParameterSetPair(m_MultiPassTransposeParams.pPass1ComparisonModeParams2, m_MultiPassTransposeParams.pPass2ComparisonModeParams2),
-                                   m_CurrentGaussianSigma2,
-                                   m_CurrentKernelSize2,
-                                   GetFloatPrecision(m_CurrentFpMath2));
+            ExecuteMultiPassTransposeFilter(
+                pCmdList,
+                L"MultiPassTransposeFilter Compare2",
+                ParameterSetPair(m_MultiPassTransposeParams.pPass1ComparisonModeParams2, m_MultiPassTransposeParams.pPass2ComparisonModeParams2),
+                m_CurrentGaussianSigma2,
+                m_CurrentKernelSize2,
+                GetFloatPrecision(m_CurrentFpMath2));
             break;
         case Algorithm::FIDELITYFX_BLUR_GAUSSIAN:
         default:
@@ -747,18 +696,16 @@ void BlurRenderModule::Execute(double deltaTime, CommandList* pCmdList)
             break;
         }
 
-        barriers[0] = Barrier::Transition(m_pComparisonOutput2->GetResource(),
-            ResourceState::UnorderedAccess,
-            ResourceState::NonPixelShaderResource | ResourceState::PixelShaderResource);
+        barriers[0] = Barrier::Transition(
+            m_pComparisonOutput2->GetResource(), ResourceState::UnorderedAccess, ResourceState::NonPixelShaderResource | ResourceState::PixelShaderResource);
 
         ResourceBarrier(pCmdList, 1, barriers.data());
 
         ExecuteComparisonPass(pCmdList);
     }
 
-    barriers[0] = Barrier::Transition(m_pOutput->GetResource(),
-        ResourceState::UnorderedAccess,
-        ResourceState::NonPixelShaderResource | ResourceState::PixelShaderResource);
+    barriers[0] = Barrier::Transition(
+        m_pOutput->GetResource(), ResourceState::UnorderedAccess, ResourceState::NonPixelShaderResource | ResourceState::PixelShaderResource);
 
     ResourceBarrier(pCmdList, 1, barriers.data());
 }
@@ -782,9 +729,7 @@ void BlurRenderModule::UpdateConstants(uint32_t width, uint32_t height, Paramete
     pParameterSet->UpdateRootConstantBuffer(&bufferInfo, 0);
 }
 
-static void ComputeDispatchDimensions(
-    uint32_t imageWidth, uint32_t imageHeight,
-    uint32_t& outDispatchX, uint32_t& outDispatchY, uint32_t& outDispatchZ)
+static void ComputeDispatchDimensions(uint32_t imageWidth, uint32_t imageHeight, uint32_t& outDispatchX, uint32_t& outDispatchY, uint32_t& outDispatchZ)
 {
     const int THREAD_GROUP_WORK_REGION_DIM = 8;  // 8x8 = 64 px region
 
@@ -793,10 +738,7 @@ static void ComputeDispatchDimensions(
     outDispatchZ = 1;
 }
 
-void BlurRenderModule::ExecutePassThrough(
-    CommandList*   pCmdList,
-    const wchar_t* pProfile,
-    ParameterSet*  pParamSet)
+void BlurRenderModule::ExecutePassThrough(CommandList* pCmdList, const wchar_t* pProfile, ParameterSet* pParamSet)
 {
     GPUScopedProfileCapture marker(pCmdList, pProfile);
 
@@ -809,20 +751,13 @@ void BlurRenderModule::ExecutePassThrough(
     uint32_t dispatchX = 0u;
     uint32_t dispatchY = 0u;
     uint32_t dispatchZ = 0u;
-    ComputeDispatchDimensions(
-        m_pInput->GetDesc().Width, m_pInput->GetDesc().Height,
-        dispatchX, dispatchY, dispatchZ);
+    ComputeDispatchDimensions(m_pInput->GetDesc().Width, m_pInput->GetDesc().Height, dispatchX, dispatchY, dispatchZ);
 
     Dispatch(pCmdList, dispatchX, dispatchY, dispatchZ);
 }
 
 void BlurRenderModule::ExecuteSinglePassBoxFilter(
-    CommandList*          pCmdList,
-    const wchar_t*        pProfile,
-    ParameterSet*         pParamSet,
-    int32_t               kernelPerm,
-    int32_t               kernelSize,
-    FfxBlurFloatPrecision floatPrecision)
+    CommandList* pCmdList, const wchar_t* pProfile, ParameterSet* pParamSet, int32_t kernelPerm, int32_t kernelSize, FfxBlurFloatPrecision floatPrecision)
 {
     GPUScopedProfileCapture marker(pCmdList, pProfile);
 
@@ -843,20 +778,13 @@ void BlurRenderModule::ExecuteSinglePassBoxFilter(
     uint32_t dispatchX = 0u;
     uint32_t dispatchY = 0u;
     uint32_t dispatchZ = 0u;
-    ComputeDispatchDimensions(
-        m_pInput->GetDesc().Width, m_pInput->GetDesc().Height,
-        dispatchX, dispatchY, dispatchZ);
+    ComputeDispatchDimensions(m_pInput->GetDesc().Width, m_pInput->GetDesc().Height, dispatchX, dispatchY, dispatchZ);
 
     Dispatch(pCmdList, dispatchX, dispatchY, dispatchZ);
 }
 
 void BlurRenderModule::ExecuteMultiPassFilter(
-    CommandList*          pCmdList,
-    const wchar_t*        pProfile,
-    ParameterSetPair&     paramSets,
-    int32_t               kernelPerm,
-    int32_t               kernelSize,
-    FfxBlurFloatPrecision floatPrecision)
+    CommandList* pCmdList, const wchar_t* pProfile, ParameterSetPair& paramSets, int32_t kernelPerm, int32_t kernelSize, FfxBlurFloatPrecision floatPrecision)
 {
     GPUScopedProfileCapture marker(pCmdList, pProfile);
 
@@ -879,12 +807,7 @@ void BlurRenderModule::ExecuteMultiPassFilter(
 }
 
 void BlurRenderModule::ExecuteMultiPassTransposeFilter(
-    CommandList*          pCmdList,
-    const wchar_t*        pProfile,
-    ParameterSetPair&     paramSets,
-    int32_t               kernelPerm,
-    int32_t               kernelSize,
-    FfxBlurFloatPrecision floatPrecision)
+    CommandList* pCmdList, const wchar_t* pProfile, ParameterSetPair& paramSets, int32_t kernelPerm, int32_t kernelSize, FfxBlurFloatPrecision floatPrecision)
 {
     GPUScopedProfileCapture marker(pCmdList, pProfile);
 
@@ -900,15 +823,10 @@ void BlurRenderModule::ExecuteMultiPassTransposeFilter(
 }
 
 void BlurRenderModule::ExecuteTwoPassFilter(
-    CommandList*      pCmdList,
-    PipelineObject*   pPass1PipelineObj,
-    PipelineObject*   pPass2PipelineObj,
-    ParameterSetPair& paramSets,
-    const Texture*    pPass1Output)
+    CommandList* pCmdList, PipelineObject* pPass1PipelineObj, PipelineObject* pPass2PipelineObj, ParameterSetPair& paramSets, const Texture* pPass1Output)
 {
-    Barrier rtBarrier = Barrier::Transition(pPass1Output->GetResource(),
-        ResourceState::NonPixelShaderResource | ResourceState::PixelShaderResource,
-        ResourceState::UnorderedAccess);
+    Barrier rtBarrier = Barrier::Transition(
+        pPass1Output->GetResource(), ResourceState::NonPixelShaderResource | ResourceState::PixelShaderResource, ResourceState::UnorderedAccess);
 
     ResourceBarrier(pCmdList, 1, &rtBarrier);
 
@@ -925,10 +843,8 @@ void BlurRenderModule::ExecuteTwoPassFilter(
 
     Dispatch(pCmdList, dispatchX, dispatchY, dispatchZ);
 
-    rtBarrier =
-        Barrier::Transition(pPass1Output->GetResource(),
-            ResourceState::UnorderedAccess,
-            ResourceState::NonPixelShaderResource | ResourceState::PixelShaderResource);
+    rtBarrier = Barrier::Transition(
+        pPass1Output->GetResource(), ResourceState::UnorderedAccess, ResourceState::NonPixelShaderResource | ResourceState::PixelShaderResource);
 
     ResourceBarrier(pCmdList, 1, &rtBarrier);
 
@@ -943,13 +859,12 @@ void BlurRenderModule::ExecuteTwoPassFilter(
     Dispatch(pCmdList, dispatchX, dispatchY, dispatchZ);
 }
 
-void BlurRenderModule::ExecuteBlurEffect(
-    CommandList*             pCmdList,
-    const wchar_t*           pProfile,
-    FfxBlurContext&          blurContext,
-    const TexturePair&       inputOutputPair,
-    FfxBlurKernelPermutation kernelPermutation,
-    FfxBlurKernelSize        kernelSize)
+void BlurRenderModule::ExecuteBlurEffect(CommandList*             pCmdList,
+                                         const wchar_t*           pProfile,
+                                         FfxBlurContext&          blurContext,
+                                         const TexturePair&       inputOutputPair,
+                                         FfxBlurKernelPermutation kernelPermutation,
+                                         FfxBlurKernelSize        kernelSize)
 {
     GPUScopedProfileCapture marker(pCmdList, pProfile);
 
@@ -958,7 +873,7 @@ void BlurRenderModule::ExecuteBlurEffect(
     desc.commandList = SDKWrapper::ffxGetCommandList(pCmdList);
 
     desc.kernelPermutation = kernelPermutation;
-    desc.kernelSize = kernelSize;
+    desc.kernelSize        = kernelSize;
 
     desc.input = SDKWrapper::ffxGetResource(inputOutputPair.first->GetResource(), L"BLUR_InputSrc", FFX_RESOURCE_STATE_PIXEL_COMPUTE_READ);
 

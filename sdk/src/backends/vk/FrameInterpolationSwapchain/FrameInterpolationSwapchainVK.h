@@ -1,7 +1,7 @@
 // This file is part of the FidelityFX SDK.
 //
 // Copyright (C) 2024 Advanced Micro Devices, Inc.
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files(the "Software"), to deal
 // in the Software without restriction, including without limitation the rights
@@ -30,18 +30,20 @@
 
 #include <atomic>
 #include <cstdint>
+#include <mutex>
+#include <cstring>
 
 #include "FrameInterpolationSwapchainVK_Helpers.h"
 
 #include <FidelityFX/host/backends/vk/ffx_vk.h>
 #include <FidelityFX/host/ffx_fsr3.h>
-
+#include <FidelityFX/host/posx_event.h>
 
 // NOTES regarding using win32 objects:
 //   - On Windows, critical section and events are faster than their std counterparts
 //   - using Win32 threads to set the priorities
 //   - this needs to be ported to standard C++ or other platform if necessary
-#include <Windows.h>
+// #include <Windows.h>
 
 #define FFX_FRAME_INTERPOLATION_SWAP_CHAIN_VERSION                     1
 #define FFX_FRAME_INTERPOLATION_SWAP_CHAIN_MAX_BUFFER_COUNT            6
@@ -56,41 +58,21 @@ extern "C" {
 #endif
 
 // Provided by VK_KHR_swapchain
-VkResult vkAcquireNextImageFFX(
-    VkDevice                                    device,
-    VkSwapchainKHR                              swapchain,
-    uint64_t                                    timeout,
-    VkSemaphore                                 semaphore,
-    VkFence                                     fence,
-    uint32_t*                                   pImageIndex);
+VkResult vkAcquireNextImageFFX(VkDevice device, VkSwapchainKHR swapchain, uint64_t timeout, VkSemaphore semaphore, VkFence fence, uint32_t* pImageIndex);
 
-VkResult vkCreateSwapchainFFX(
-    VkDevice                                    device,
-    const VkSwapchainCreateInfoKHR*             pCreateInfo,
-    const VkAllocationCallbacks*                pAllocator,
-    VkSwapchainKHR*                             pSwapchain);
+VkResult vkCreateSwapchainFFX(VkDevice                        device,
+                              const VkSwapchainCreateInfoKHR* pCreateInfo,
+                              const VkAllocationCallbacks*    pAllocator,
+                              VkSwapchainKHR*                 pSwapchain);
 
-void vkDestroySwapchainFFX(
-    VkDevice                                    device,
-    VkSwapchainKHR                              swapchain,
-    const VkAllocationCallbacks*                pAllocator);
+void vkDestroySwapchainFFX(VkDevice device, VkSwapchainKHR swapchain, const VkAllocationCallbacks* pAllocator);
 
-VkResult vkGetSwapchainImagesFFX(
-    VkDevice                                    device,
-    VkSwapchainKHR                              swapchain,
-    uint32_t*                                   pSwapchainImageCount,
-    VkImage*                                    pSwapchainImages);
+VkResult vkGetSwapchainImagesFFX(VkDevice device, VkSwapchainKHR swapchain, uint32_t* pSwapchainImageCount, VkImage* pSwapchainImages);
 
-VkResult vkQueuePresentFFX(
-    VkQueue                                     queue,
-    const VkPresentInfoKHR*                     pPresentInfo);
+VkResult vkQueuePresentFFX(VkQueue queue, const VkPresentInfoKHR* pPresentInfo);
 
 // Provided by VK_EXT_hdr_metadata
-void vkSetHdrMetadataFFX(
-    VkDevice device,
-    uint32_t swapchainCount,
-    const VkSwapchainKHR* pSwapchains,
-    const VkHdrMetadataEXT* pMetadata);
+void vkSetHdrMetadataFFX(VkDevice device, uint32_t swapchainCount, const VkSwapchainKHR* pSwapchains, const VkHdrMetadataEXT* pMetadata);
 
 uint64_t getLastPresentCountFFX(VkSwapchainKHR swapchain);
 
@@ -112,7 +94,7 @@ typedef struct PacingData
     uint64_t replacementBufferSemaphoreSignal;
     uint64_t numFramesSentForPresentationBase;
     uint32_t numFramesToPresent;
-    UINT64   currentFrameID;
+    uint64_t currentFrameID;
 
     typedef enum FrameType
     {
@@ -157,7 +139,7 @@ enum class FGSwapchainCompositionMode
 
 struct FrameinterpolationPresentInfo
 {
-    VulkanCommandPool<3, 8> commandPool; // at most 3 families: game, asyncCompute, present
+    VulkanCommandPool<3, 8> commandPool;  // at most 3 families: game, asyncCompute, present
 
     PacingData scheduledInterpolations;
     PacingData scheduledPresents;
@@ -183,13 +165,13 @@ struct FrameinterpolationPresentInfo
     VulkanQueue gameQueue          = {};
     VulkanQueue presentQueue       = {};
 
-    VkSemaphore gameSemaphore                                                                = VK_NULL_HANDLE;
-    VkSemaphore interpolationSemaphore                                                       = VK_NULL_HANDLE;
-    VkSemaphore presentSemaphore                                                             = VK_NULL_HANDLE;  // TODO: probably delete this one
-    VkSemaphore replacementBufferSemaphore                                                   = VK_NULL_HANDLE;
-    VkSemaphore compositionSemaphore                                                         = VK_NULL_HANDLE;
+    VkSemaphore gameSemaphore              = VK_NULL_HANDLE;
+    VkSemaphore interpolationSemaphore     = VK_NULL_HANDLE;
+    VkSemaphore presentSemaphore           = VK_NULL_HANDLE;  // TODO: probably delete this one
+    VkSemaphore replacementBufferSemaphore = VK_NULL_HANDLE;
+    VkSemaphore compositionSemaphore       = VK_NULL_HANDLE;
 
-    uint64_t    lastPresentSemaphoreValue = 0;
+    uint64_t lastPresentSemaphoreValue = 0;
 
     VkSemaphore acquireSemaphores[FFX_FRAME_INTERPOLATION_SWAP_CHAIN_MAX_ACQUIRE_SEMAPHORE_COUNT] = {};
     uint32_t    nextAcquireSemaphoreIndex                                                         = 0;
@@ -197,12 +179,12 @@ struct FrameinterpolationPresentInfo
     uint64_t realPresentCount = 0;
 
     // using win32 threads to set the priorities
-    HANDLE           presenterThreadHandle         = NULL;
-    CRITICAL_SECTION scheduledFrameCriticalSection = {};
-    HANDLE           presentEvent                  = NULL;
-    HANDLE           interpolationEvent            = NULL;
-    HANDLE           pacerEvent                    = NULL;
-    CRITICAL_SECTION swapchainCriticalSection;
+    pthread_t     presenterThreadHandle         = 0;
+    std::mutex    scheduledFrameCriticalSection = {};
+    posix_event_t presentEvent;
+    posix_event_t interpolationEvent;
+    posix_event_t pacerEvent;
+    std::mutex    swapchainCriticalSection;
 
     FGSwapchainCompositionMode compositionMode = FGSwapchainCompositionMode::eNone;
     volatile bool              resetTimer      = false;
@@ -213,10 +195,10 @@ struct FrameinterpolationPresentInfo
     // small helpers for queue ownership transfer
     VkImageMemoryBarrier queueFamilyOwnershipTransferGameToPresent(FfxResource resource) const;
 
-    volatile double            safetyMarginInSec = 0.0001; //0.1ms
-    volatile double            varianceFactor    = 0.1;
+    volatile double safetyMarginInSec = 0.0001;  //0.1ms
+    volatile double varianceFactor    = 0.1;
 
-    FfxWaitCallbackFunc waitCallback               = nullptr;
+    FfxWaitCallbackFunc waitCallback = nullptr;
 };
 
 //////////////////////////////////////////////
@@ -298,7 +280,7 @@ private:
                          uint32_t                                index,
                          const VkPhysicalDeviceMemoryProperties& memProperties,
                          const VkAllocationCallbacks*            pAllocator);
-    void destroyImage(ReplacementResource& resource, const VkAllocationCallbacks* pAllocator);
+    void     destroyImage(ReplacementResource& resource, const VkAllocationCallbacks* pAllocator);
 
 private:
     // swapchain settings
@@ -313,7 +295,7 @@ private:
     uint64_t  gameSemaphoreValue               = 0;
     bool      frameInterpolationResetCondition = false;
     FfxRect2D interpolationRect;
-    
+
     uint32_t            gameBufferCount                                                             = 0;
     ReplacementResource replacementSwapBuffers[FFX_FRAME_INTERPOLATION_SWAP_CHAIN_MAX_BUFFER_COUNT] = {};
     ReplacementResource interpolationOutputs[2]                                                     = {};
@@ -328,23 +310,23 @@ private:
 
     FfxFsr3FrameGenerationFlags configFlags = {};
 
-    bool tearingSupported               = false;
-    bool interpolationEnabled           = false;
-    bool presentInterpolatedOnly        = false;
-    bool previousFrameWasInterpolated   = false;
-    bool drawDebugPacingLines           = false;
+    bool tearingSupported             = false;
+    bool interpolationEnabled         = false;
+    bool presentInterpolatedOnly      = false;
+    bool previousFrameWasInterpolated = false;
+    bool drawDebugPacingLines         = false;
 
-    UINT64        currentFrameID = 0;
+    uint64_t currentFrameID = 0;
 
-    LARGE_INTEGER lastTimestamp = {};
-    LARGE_INTEGER currTimestamp = {};
-    double        perfCountFreq = 0.0;
+    // LARGE_INTEGER lastTimestamp = {};
+    // LARGE_INTEGER currTimestamp = {};
+    double perfCountFreq = 0.0;
 
     uint64_t framesSentForPresentation = 0;
 
-    CRITICAL_SECTION criticalSection             = {};
-    CRITICAL_SECTION criticalSectionUpdateConfig = {};
-    HANDLE           interpolationThreadHandle   = NULL;
+    std::mutex criticalSection             = {};
+    std::mutex criticalSectionUpdateConfig = {};
+    pthread_t  interpolationThreadHandle   = 0;
 
     FfxPresentCallbackFunc         presentCallback                = nullptr;
     void*                          presentCallbackContext         = nullptr;
