@@ -404,6 +404,7 @@ static FfxErrorCode createPipelineStates(FfxFsr3UpscalerContext_Private* context
     bool canForceWave64    = false;
     bool useLut            = false;
 
+    /* Disabled - does not work properly on steam deck
     const uint32_t waveLaneCountMin = capabilities.waveLaneCountMin;
     const uint32_t waveLaneCountMax = capabilities.waveLaneCountMax;
     if (waveLaneCountMin == 32 && waveLaneCountMax == 64)
@@ -415,6 +416,7 @@ static FfxErrorCode createPipelineStates(FfxFsr3UpscalerContext_Private* context
     {
         canForceWave64 = false;
     }
+    */
 
     // Work out what permutation to load.
     uint32_t contextFlags = context->contextDescription.flags;
